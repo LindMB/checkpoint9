@@ -19,4 +19,5 @@ private:
   rclcpp::TimerBase::SharedPtr cmd_vel_unstamped_pub_timer_;
 
   void laser_scan_clbk(const sensor_msgs::msg::LaserScan::SharedPtr &msg);
+  void cmd_vel_unstamped_pub_timer_clbk();
 };
