@@ -11,7 +11,7 @@ PreApproach::PreApproach(const std::string &node_name)
 
   this->laser_scan_sub_ =
       this->rclcpp::create_subscription<sensor_msgs::msg::LaserScan>(
-          "/scan", qos, std::bind(&PreApproach::laser_scan_clbk, this));
+          "/scan", qos, std::bind(&PreApproach::laser_scan_clbk_, this));
 
   this->cmd_vel_unstamped_pub =
       this->rclcpp::create_publisher<geometry_msgs::msg::Twist>(
@@ -20,10 +20,24 @@ PreApproach::PreApproach(const std::string &node_name)
   auto timer_period = std::schrono::milliseconds(100);
   this->cmd_vel_unstamped_pub_timer_ = this->rclcpp::create_wall_timer(
       timer_period,
-      std::bind(&PreApproach::cmd_vel_unstamped_pub_timer_clbk, this));
+      std::bind(&PreApproach::cmd_vel_unstamped_pub_timer_clbk_, this));
 }
 
-void PreApproach::laser_scan_clbk(
+void PreApproach::laser_scan_clbk_(
     const sensor_msgs::msg::LaserScan::SharedPtr &msg) {}
 
-void PreApproach::cmd_vel_unstamped_pub_timer_clbk() {}
+void PreApproach::move_forward_() {}
+void PreApproach::detect_obstacle_at_x_meters_(const double meters) {}
+void PreApproach::stop_robot() {}
+void PreApproach::rotate_of_x_degrees_(const double degrees) {}
+
+void PreApproach::cmd_vel_unstamped_pub_timer_clbk_() {
+
+  /// Move forward
+
+  /// Detect the wall at x meters
+
+  /// Stop
+
+  /// Rotate of x degrees
+}
