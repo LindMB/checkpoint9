@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<launch>
+
+    <!-- Declare launch arguments -->
+    <arg name="obstacle" default="0.3"/>
+    <arg name="degrees" default="-90"/>
+    <arg name="rviz_config_file_name" default="config.rviz"/>
+
+    <!-- Include Warehouse RB1 launch file -->
+    <include file="$(find-pkg-share the_construct_office_gazebo)/launch/warehouse_rb1.launch.xml"/>
+
+    <!-- Run attach_shelf_node -->
+    <node pkg="attach_shelf" exec="attach_shelf_node" name="attach_shelf_node"
+          output="screen" emulate_tty="true">
+        <!-- Parameters to send to the node when it is starting -->
+        <param name="obstacle" value="$(var obstacle)"/>
+        <param name="degrees" value="$(var degrees)"/>
+    </node>
+
+    <!-- Run RViz -->
+    <node pkg="rviz2" exec="rviz2" name="rviz2" output="screen" emulate_tty="true"
+          arguments="-d $(find-pkg-share attach_shelf)/rviz_config/$(var rviz_config_file_name)">
+        <!-- Parameter to send to the node when it is starting -->
+        <param name="use_sim_time" value="true"/>
+    </node>
+
+</launch>
