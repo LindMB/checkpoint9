@@ -3,7 +3,9 @@
 #include "rclcpp/create_subscription.hpp"
 #include "rclcpp/create_timer.hpp"
 #include "rclcpp/qos.hpp"
+#include "rclcpp/utilities.hpp"
 #include <cmath>
+#include <memory>
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2/LinearMath/Quaternion.h>
 
@@ -195,4 +197,24 @@ void PreApproach::cmd_vel_unstamped_pub_timer_clbk_() {
   } else {
     // Do nothing
   }
+}
+
+std::shared_ptr<PreApproach> attach_shelf_node;
+
+void signal_handler(int /*signum*/) { // intentionally unused
+
+  attach_shelf_node->stop_robot();
+  rclcpp::shutdown();
+}
+
+int main(int argc, char **argv) {
+
+  rclcpp::init(argc, argv);
+  attach_shelf_node = std::make_shared<PreApproach>("attach_shelf_node");
+
+  // Register the signal handler for CTRL+C
+  std::signal(SIGINT, signal_handler);
+
+  rclcpp::spin(attach_shelf_node);
+  return 0;
 }
