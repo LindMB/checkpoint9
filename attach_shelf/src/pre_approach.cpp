@@ -13,8 +13,8 @@ PreApproach::PreApproach(const std::string &node_name)
     : Node(node_name), node_name_(node_name) {
 
   // Declare launch parameters (typed, with defaults)
-  this->declare_parameter<double>("obstacle", 0.2);
-  this->declare_parameter<double>("degrees", 90);
+  this->declare_parameter<double>("obstacle", 0.3);
+  this->declare_parameter<double>("degrees", -90);
 
   // Read launch parameters once at startup
   this->obstacle_ = this->get_parameter("obstacle").as_double();
@@ -154,10 +154,16 @@ void PreApproach::rotate_of_x_degrees_() {
   // Init rotation message to publish
   auto rotate_msg = geometry_msgs::msg::Twist();
   rotate_msg.linear.x = 0.0;
-  rotate_msg.angular.z = this->angular_z_vel;
+
+  // Define the rotation direction based on the sign of angle_rad
+  if (angle_rad < 0) {
+    rotate_msg.angular.z = -this->angular_z_vel;
+  } else {
+    rotate_msg.angular.z = this->angular_z_vel;
+  }
 
   // If the robot finished rotating of x degrees
-  if (this->accumulated_yaw_ >= angle_rad) {
+  if (this->accumulated_yaw_ >= std::abs(angle_rad)) {
 
     // Stop the robot
     stop_robot();
