@@ -8,6 +8,14 @@
 PreApproach::PreApproach(const std::string &node_name)
     : Node(node_name), node_name_(node_name) {
 
+  // Declare launch parameters (typed, with defaults)
+  this->declare_parameter<double>("obstacle", 0.2);
+  this->declare_parameter<double>("degrees", 90);
+
+  // Read launch parameters once at startup
+  this->obstacle_ = this->get_parameter("obstacle").as_double();
+  this->degrees_ = this->get_parameter("degrees").as_double();
+
   auto qos = rclcpp::QoS(10).reliability(rclcpp::ReliabilityPolicy::RELIABLE);
 
   this->laser_scan_sub_ =
@@ -25,6 +33,11 @@ PreApproach::PreApproach(const std::string &node_name)
   this->cmd_vel_unstamped_pub_timer_ = this->rclcpp::create_wall_timer(
       timer_period,
       std::bind(&PreApproach::cmd_vel_unstamped_pub_timer_clbk_, this));
+
+  RCLCPP_INFO(
+      this->get_logger(),
+      "PreApproach initialised | obstacle=%.2f degrees=%.2f",
+      obstacle_, degrees_);
 }
 
 void PreApproach::odom_callback_(const nav_msgs::msg::Odometry::SharedPtr msg) {
@@ -72,8 +85,9 @@ void PreApproach::odom_callback_(const nav_msgs::msg::Odometry::SharedPtr msg) {
 void PreApproach::laser_scan_clbk_(
     const sensor_msgs::msg::LaserScan::SharedPtr &msg) {
 
+  // If no obstacle detected yet
   if (!this->obstacle_detected_) {
-    if (is_obstacle_detected_at_x_meters_(this->meters_from_wall_, msg)) {
+    if (is_obstacle_detected_at_x_meters_(msg)) {
       this->obstacle_detected_ = true;
     } else {
       // Do nothing
@@ -100,7 +114,7 @@ void PreApproach::stop_robot() {
 }
 
 bool PreApproach::is_obstacle_detected_at_x_meters_(
-    const double meters, const sensor_msgs::msg::LaserScan::SharedPtr msg) {
+    const sensor_msgs::msg::LaserScan::SharedPtr msg) {
 
   double angle_rad;
 
@@ -117,7 +131,7 @@ bool PreApproach::is_obstacle_detected_at_x_meters_(
     if (std::isfinite(msg->ranges[i]) && is_angle_in_front_section) {
 
       // If obstacle detected
-      if (msg->ranges[i] <= meters) {
+      if (msg->ranges[i] <= this->obstacle_) {
         return true;
       }
     }
@@ -126,10 +140,10 @@ bool PreApproach::is_obstacle_detected_at_x_meters_(
   return false;
 }
 
-void PreApproach::rotate_of_x_degrees_(const double angle_deg) {
+void PreApproach::rotate_of_x_degrees_() {
 
   // Convert angle in degrees into radians
-  double angle_rad = (M_PI * angle_deg) / 180;
+  double angle_rad = (M_PI * this->degrees_) / 180;
 
   // Init rotation message to publish
   auto rotate_msg = geometry_msgs::msg::Twist();
@@ -167,7 +181,7 @@ void PreApproach::cmd_vel_unstamped_pub_timer_clbk_() {
       stop_robot();
 
       /// Rotate of x degrees
-      // rotate_of_x_degrees_(degrees);
+      rotate_of_x_degrees_();
 
     } else {
       /// Move forward

@@ -16,8 +16,8 @@ public:
 private:
   std::string node_name_;
 
-  const double dist_from_wall_;
-  const double degrees_to_rotate_;
+  double obstacle_; // Distance from the wall (in m)
+  double degrees_;  // Degrees to rotate the robot after stopping
 
   double previous_yam_;
   double accumulated_yaw = 0.0;
@@ -40,7 +40,7 @@ private:
   void cmd_vel_unstamped_pub_timer_clbk_();
 
   void move_forward_();
-  void rotate_of_x_degrees_(const double angle_deg);
+  void rotate_of_x_degrees_();
   bool is_obstacle_detected_at_x_meters_(
-      const double meters, const sensor_msgs::msg::LaserScan::SharedPtr msg);
+      const sensor_msgs::msg::LaserScan::SharedPtr msg);
 };
