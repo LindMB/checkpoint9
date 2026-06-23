@@ -13,6 +13,7 @@ public:
   PreApproach(const std::string &node_name);
 
   void stop_robot();
+  bool is_pre_approach_completed() const;
 
   ~PreApproach() = default;
 
@@ -24,8 +25,8 @@ private:
 
   double previous_yam_;
   double accumulated_yaw_ = 0.0;
-  double linear_x_vel = 0.5;
-  double angular_z_vel = 0.5;
+  double linear_x_vel = 0.2;
+  double angular_z_vel = 0.4;
 
   bool first_odom_ = false;
   bool obstacle_detected_ = false;

@@ -205,6 +205,10 @@ void PreApproach::cmd_vel_unstamped_pub_timer_clbk_() {
   }
 }
 
+bool PreApproach::is_pre_approach_completed() const {
+  return this->pre_approach_completed_;
+}
+
 std::shared_ptr<PreApproach> attach_shelf_node;
 
 void signal_handler(int /*signum*/) { // intentionally unused
@@ -221,6 +225,19 @@ int main(int argc, char **argv) {
   // Register the signal handler for CTRL+C
   std::signal(SIGINT, signal_handler);
 
-  rclcpp::spin(attach_shelf_node);
+  rclcpp::Rate rate(10); // 10Hz = 1/10 sec = 0,1 sec = 100 ms
+
+  while (rclcpp::ok() && !attach_shelf_node->is_pre_approach_completed()) {
+    rclcpp::spin_some(attach_shelf_node);
+    rate.sleep();
+  }
+
+  RCLCPP_INFO(attach_shelf_node->get_logger(), "Shutting down in 3 seconds...");
+  rclcpp::sleep_for(std::chrono::seconds(3));
+
+  // Destroy publishers/subscribers/timers BEFORe shutdown
+  attach_shelf_node.reset();
+
+  rclcpp::shutdown();
   return 0;
 }
