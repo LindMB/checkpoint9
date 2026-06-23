@@ -16,6 +16,25 @@ find_package(tf2_ros REQUIRED)
 
 include_directories(include)
 
+# Create ${PROJECT_NAME}_node executable 
+add_executable(${PROJECT_NAME}_node src/pre_approach.cpp)
+
+# Add dependencies to ${PROJECT_NAME}_node executable
+ament_target_dependencies(${PROJECT_NAME}_node
+  rclcpp
+  geometry_msgs
+  nav_msgs 
+  sensor_msgs 
+  tf2
+  tf2_ros
+)
+
+# Copy ${PROJECT_NAME}_node executable into /install of its package
+# so ROS2 can find it when doing ros2 run
+install(TARGETS 
+	${PROJECT_NAME}_node
+	DESTINATION lib/${PROJECT_NAME})
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights

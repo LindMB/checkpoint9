@@ -1,10 +1,13 @@
 #pragma once
+#include "geometry_msgs/msg/twist.hpp"
+#include "nav_msgs/msg/odometry.hpp"
 #include "rclcpp/publisher.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp/subscription.hpp"
 #include "rclcpp/timer.hpp"
+#include "sensor_msgs/msg/laser_scan.hpp"
 
-class PreApproach : public rclcpp::Node() {
+class PreApproach : public rclcpp::Node {
 
 public:
   PreApproach(const std::string &node_name);
@@ -20,7 +23,7 @@ private:
   double degrees_;  // Degrees to rotate the robot after stopping
 
   double previous_yam_;
-  double accumulated_yaw = 0.0;
+  double accumulated_yaw_ = 0.0;
   double linear_x_vel = 0.5;
   double angular_z_vel = 0.5;
 

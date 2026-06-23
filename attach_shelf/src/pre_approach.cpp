@@ -4,6 +4,8 @@
 #include "rclcpp/create_timer.hpp"
 #include "rclcpp/qos.hpp"
 #include <cmath>
+#include <tf2/LinearMath/Matrix3x3.h>
+#include <tf2/LinearMath/Quaternion.h>
 
 PreApproach::PreApproach(const std::string &node_name)
     : Node(node_name), node_name_(node_name) {
@@ -16,28 +18,30 @@ PreApproach::PreApproach(const std::string &node_name)
   this->obstacle_ = this->get_parameter("obstacle").as_double();
   this->degrees_ = this->get_parameter("degrees").as_double();
 
-  auto qos = rclcpp::QoS(10).reliability(rclcpp::ReliabilityPolicy::RELIABLE);
+  auto qos = rclcpp::QoS(10).reliability(rclcpp::ReliabilityPolicy::Reliable);
 
   this->laser_scan_sub_ =
-      this->rclcpp::create_subscription<sensor_msgs::msg::LaserScan>(
-          "/scan", qos, std::bind(&PreApproach::laser_scan_clbk_, this));
+      this->create_subscription<sensor_msgs::msg::LaserScan>(
+          "/scan", qos,
+          std::bind(&PreApproach::laser_scan_clbk_, this,
+                    std::placeholders::_1));
 
-  this->odom_sub_ = this->rclcpp::create_subscription<nav_msgs::msg::Odometry>(
-      "/odom", qos, std::bind(&PreApproach::odom_callback_, this));
+  this->odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
+      "/odom", qos,
+      std::bind(&PreApproach::odom_callback_, this, std::placeholders::_1));
 
   this->cmd_vel_unstamped_pub_ =
-      this->rclcpp::create_publisher<geometry_msgs::msg::Twist>(
+      this->create_publisher<geometry_msgs::msg::Twist>(
           "/diffbot_base_controller/cmd_vel_unstamped", 10);
 
-  auto timer_period = std::schrono::milliseconds(100);
-  this->cmd_vel_unstamped_pub_timer_ = this->rclcpp::create_wall_timer(
+  auto timer_period = std::chrono::milliseconds(100);
+  this->cmd_vel_unstamped_pub_timer_ = this->create_wall_timer(
       timer_period,
       std::bind(&PreApproach::cmd_vel_unstamped_pub_timer_clbk_, this));
 
-  RCLCPP_INFO(
-      this->get_logger(),
-      "PreApproach initialised | obstacle=%.2f degrees=%.2f",
-      obstacle_, degrees_);
+  RCLCPP_INFO(this->get_logger(),
+              "PreApproach initialised | obstacle=%.2f degrees=%.2f", obstacle_,
+              degrees_);
 }
 
 void PreApproach::odom_callback_(const nav_msgs::msg::Odometry::SharedPtr msg) {
@@ -75,7 +79,7 @@ void PreApproach::odom_callback_(const nav_msgs::msg::Odometry::SharedPtr msg) {
     this->accumulated_yaw_ += std::abs(delta_yaw);
 
     RCLCPP_INFO(this->get_logger(), "accumulated_yaw_ : %.2f",
-                this->accumulated_turn_yaw_);
+                this->accumulated_yaw_);
   }
 
   // Update previous_yaw for the next calculation
@@ -83,7 +87,7 @@ void PreApproach::odom_callback_(const nav_msgs::msg::Odometry::SharedPtr msg) {
 }
 
 void PreApproach::laser_scan_clbk_(
-    const sensor_msgs::msg::LaserScan::SharedPtr &msg) {
+    const sensor_msgs::msg::LaserScan::SharedPtr msg) {
 
   // If no obstacle detected yet
   if (!this->obstacle_detected_) {
@@ -99,18 +103,18 @@ void PreApproach::laser_scan_clbk_(
 
 void PreApproach::move_forward_() {
 
-  auto move_forward = geometry_msgs::msgs::Twist();
+  auto move_forward = geometry_msgs::msg::Twist();
   move_forward.linear.x = this->linear_x_vel;
   move_forward.angular.z = 0.0;
 
-  cmd_vel_unstamped_pub_.publish(move_forward);
+  cmd_vel_unstamped_pub_->publish(move_forward);
 }
 
 void PreApproach::stop_robot() {
 
   auto stop_msg = geometry_msgs::msg::Twist();
 
-  cmd_vel_unstamped_pub_.publish(stop_msg);
+  cmd_vel_unstamped_pub_->publish(stop_msg);
 }
 
 bool PreApproach::is_obstacle_detected_at_x_meters_(
@@ -118,13 +122,13 @@ bool PreApproach::is_obstacle_detected_at_x_meters_(
 
   double angle_rad;
 
-  // Front section -> Between -30deg and 30deg
-  bool is_angle_in_front_section =
-      (angle_rad >= -(M_PI / 6) && angle_rad <= M_PI / 6);
-
   for (size_t i = 0; i < msg->ranges.size(); i++) {
 
     angle_rad = msg->angle_min + (i * msg->angle_increment);
+
+    // Front section -> Between -30deg and 30deg
+    bool is_angle_in_front_section =
+        (angle_rad >= -(M_PI / 6) && angle_rad <= M_PI / 6);
 
     // If the ray distance is different from inf, -inf and NAN
     // and is in the front section
@@ -166,7 +170,7 @@ void PreApproach::rotate_of_x_degrees_() {
     this->accumulated_yaw_ = 0.0;
 
   } else { // Continue to rotate
-    cmd_vel_unstamped_pub_.publish(rotate_msg);
+    cmd_vel_unstamped_pub_->publish(rotate_msg);
   }
 }
 
