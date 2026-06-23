@@ -77,6 +77,8 @@ void PreApproach::laser_scan_clbk_(
     } else {
       // Do nothing
     }
+  } else {
+    // Do nothing
   }
 }
 
@@ -96,10 +98,8 @@ void PreApproach::stop_robot() {
   cmd_vel_unstamped_pub_.publish(stop_msg);
 }
 
-bool PreApproach::is_obstacle_detected_at_x_meters_(const double meters) {
-
-    
-}
+bool PreApproach::is_obstacle_detected_at_x_meters_(
+    const double meters, const sensor_msgs::msg::LaserScan::SharedPtr msg) {}
 
 void PreApproach::rotate_of_x_degrees_(const double angle_deg) {
 
@@ -120,6 +120,9 @@ void PreApproach::rotate_of_x_degrees_(const double angle_deg) {
     this->rotation_completed_ = true;
     RCLCPP_INFO(this->get_logger(), "Rotation completed !");
 
+    this->pre_approach_completed_ = true;
+    RCLCPP_INFO(this->get_logger(), "Pre-Approach completed !");
+
     // Prepare robot for next rotation
     this->accumulated_yaw_ = 0.0;
 
@@ -130,17 +133,23 @@ void PreApproach::rotate_of_x_degrees_(const double angle_deg) {
 
 void PreApproach::cmd_vel_unstamped_pub_timer_clbk_() {
 
-  /// Detect the wall at x meters
-  if (this->obstacle_detected_) {
+  if (!this->pre_approach_completed_) {
 
-    /// Stop
-    stop_robot();
+    /// If the wall has been detected wall at x meters
+    if (this->obstacle_detected_) {
 
-    /// Rotate of x degrees
-    // rotate_of_x_degrees_(degrees);
+      /// Stop
+      stop_robot();
+
+      /// Rotate of x degrees
+      // rotate_of_x_degrees_(degrees);
+
+    } else {
+      /// Move forward
+      move_forward_();
+    }
+
   } else {
-
-    /// Move forward
-    move_forward_();
+    // Do nothing
   }
 }

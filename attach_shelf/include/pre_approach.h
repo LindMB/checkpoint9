@@ -25,8 +25,9 @@ private:
   double angular_z_vel = 0.5;
 
   bool first_odom_ = false;
-  bool rotation_completed_ = false;
   bool obstacle_detected_ = false;
+  bool rotation_completed_ = false;
+  bool pre_approach_completed_ = false;
 
   rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr laser_scan_sub_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
