@@ -7,8 +7,6 @@ Panels:
         - /Global Options1
         - /Status1
         - /TF1/Frames1
-        - /TF1/Tree1/odom1
-        - /TF1/Tree1/odom1/robot_base_footprint1
       Splitter Ratio: 0.5058823823928833
     Tree Height: 548
   - Class: rviz_common/Selection
@@ -80,18 +78,22 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+          Value: true
         robot_evelator_base_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+          Value: true
         robot_evelator_platform_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+          Value: true
         robot_front_cover_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+          Value: true
         robot_front_laser_base_link:
           Alpha: 1
           Show Axes: false
@@ -126,6 +128,7 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+          Value: true
       Mass Properties:
         Inertia: false
         Mass: false
@@ -267,25 +270,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 11.880436897277832
+      Distance: 10.304235458374023
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.20799829065799713
-        Y: -0.6550531387329102
-        Z: -0.728785514831543
+        X: 2.4624011516571045
+        Y: -0.8105518817901611
+        Z: -0.7896716594696045
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.49539777636528015
+      Pitch: 0.8297969102859497
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 0.010398263111710548
+      Yaw: 1.060397744178772
     Saved: ~
 Window Geometry:
   Displays:
