@@ -28,6 +28,44 @@ PreApproach::PreApproach(const std::string &node_name)
 
 void PreApproach::odom_callback_(const nav_msgs::msg::Odometry::SharedPtr msg) {
 
+  // Retrieve robot orientation from msg
+  tf2::Quaternion q(msg->pose.pose.orientation.x, msg->pose.pose.orientation.y,
+                    msg->pose.pose.orientation.z, msg->pose.pose.orientation.w);
+
+  // Convert quaternion to angle (roll, pitch, yaw)
+  // with yaw -> orientation around the z-axis
+  tf2::Matrix3x3 m(q);
+  double roll, pitch, yaw;
+  m.getRPY(roll, pitch, yaw);
+
+  // For the first odom msg, just init previous_yam_
+  if (first_odom_) {
+    this->previous_yam_ = yaw;
+    this->first_odom_ = false;
+    return;
+  }
+
+  // Calculate the variation angle around the z-axis
+  double delta_yaw = yaw - this->previous_yam_;
+
+  // Normalize the delta_yaw to the range [-pi, pi]
+  if (delta_yaw > M_PI) {
+    delta_yaw -= 2.0 * M_PI;
+  } else if (delta_yaw < -M_PI) {
+    delta_yaw += 2.0 * M_PI;
+  }
+
+  // If the robot is currently rotating of x degrees after reaching the wall
+  if (this->obstacle_detected_ && !this->rotation_completed_) {
+
+    this->accumulated_yaw_ += std::abs(delta_yaw);
+
+    RCLCPP_INFO(this->get_logger(), "accumulated_yaw_ : %.2f",
+                this->accumulated_turn_yaw_);
+  }
+
+  // Update previous_yaw for the next calculation
+  this->previous_yam_ = yaw;
 }
 
 void PreApproach::laser_scan_clbk_(
@@ -45,7 +83,7 @@ void PreApproach::laser_scan_clbk_(
 void PreApproach::move_forward_() {
 
   auto move_forward = geometry_msgs::msgs::Twist();
-  move_forward.linear.x = 0.5;
+  move_forward.linear.x = this->linear_x_vel;
   move_forward.angular.z = 0.0;
 
   cmd_vel_unstamped_pub_.publish(move_forward);
@@ -58,14 +96,39 @@ void PreApproach::stop_robot() {
   cmd_vel_unstamped_pub_.publish(stop_msg);
 }
 
-bool PreApproach::is_obstacle_detected_at_x_meters_(const double meters) {}
+bool PreApproach::is_obstacle_detected_at_x_meters_(const double meters) {
 
-void PreApproach::rotate_of_x_degrees_(const double degrees) {}
+    
+}
+
+void PreApproach::rotate_of_x_degrees_(const double angle_deg) {
+
+  // Convert angle in degrees into radians
+  double angle_rad = (M_PI * angle_deg) / 180;
+
+  // Init rotation message to publish
+  auto rotate_msg = geometry_msgs::msg::Twist();
+  rotate_msg.linear.x = 0.0;
+  rotate_msg.angular.z = this->angular_z_vel;
+
+  // If the robot finished rotating of x degrees
+  if (this->accumulated_yaw_ >= angle_rad) {
+
+    // Stop the robot
+    stop_robot();
+
+    this->rotation_completed_ = true;
+    RCLCPP_INFO(this->get_logger(), "Rotation completed !");
+
+    // Prepare robot for next rotation
+    this->accumulated_yaw_ = 0.0;
+
+  } else { // Continue to rotate
+    cmd_vel_unstamped_pub_.publish(rotate_msg);
+  }
+}
 
 void PreApproach::cmd_vel_unstamped_pub_timer_clbk_() {
-
-  /// Move forward
-  move_forward_();
 
   /// Detect the wall at x meters
   if (this->obstacle_detected_) {
@@ -74,5 +137,10 @@ void PreApproach::cmd_vel_unstamped_pub_timer_clbk_() {
     stop_robot();
 
     /// Rotate of x degrees
+    // rotate_of_x_degrees_(degrees);
+  } else {
+
+    /// Move forward
+    move_forward_();
   }
 }
