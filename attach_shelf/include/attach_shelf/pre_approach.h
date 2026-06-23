@@ -20,7 +20,7 @@ private:
   std::string node_name_;
 
   double obstacle_; // Distance from the wall (in m)
-  double degrees_;  // Degrees to rotate the robot after stopping
+  int degrees_;     // Degrees to rotate the robot after stopping
 
   double previous_yam_;
   double accumulated_yaw_ = 0.0;

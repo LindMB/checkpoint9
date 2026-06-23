@@ -13,12 +13,12 @@ PreApproach::PreApproach(const std::string &node_name)
     : Node(node_name), node_name_(node_name) {
 
   // Declare launch parameters (typed, with defaults)
-  this->declare_parameter<double>("obstacle", 0.3);
-  this->declare_parameter<double>("degrees", -90);
+  this->declare_parameter<double>("obstacle", 0.2);
+  this->declare_parameter<int>("degrees", 90);
 
   // Read launch parameters once at startup
   this->obstacle_ = this->get_parameter("obstacle").as_double();
-  this->degrees_ = this->get_parameter("degrees").as_double();
+  this->degrees_ = this->get_parameter("degrees").as_int();
 
   auto qos = rclcpp::QoS(10).reliability(rclcpp::ReliabilityPolicy::Reliable);
 
@@ -42,7 +42,7 @@ PreApproach::PreApproach(const std::string &node_name)
       std::bind(&PreApproach::cmd_vel_unstamped_pub_timer_clbk_, this));
 
   RCLCPP_INFO(this->get_logger(),
-              "PreApproach initialised | obstacle=%.2f degrees=%.2f", obstacle_,
+              "PreApproach initialised | obstacle=%.2f degrees=%d", obstacle_,
               degrees_);
 }
 
