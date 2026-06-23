@@ -11,15 +11,15 @@
 
     <!-- Run attach_shelf_node -->
     <node pkg="attach_shelf" exec="attach_shelf_node" name="attach_shelf_node"
-          output="screen" emulate_tty="true">
+          output="screen">
         <!-- Parameters to send to the node when it is starting -->
         <param name="obstacle" value="$(var obstacle)"/>
         <param name="degrees" value="$(var degrees)"/>
     </node>
 
     <!-- Run RViz -->
-    <node pkg="rviz2" exec="rviz2" name="rviz2" output="screen" emulate_tty="true"
-          arguments="-d $(find-pkg-share attach_shelf)/rviz_config/$(var rviz_config_file_name)">
+    <node pkg="rviz2" exec="rviz2" name="rviz2" output="screen"
+          args="-d $(find-pkg-share attach_shelf)/rviz/$(var rviz_config_file_name)">
         <!-- Parameter to send to the node when it is starting -->
         <param name="use_sim_time" value="true"/>
     </node>
