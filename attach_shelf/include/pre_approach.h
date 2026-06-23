@@ -16,14 +16,22 @@ public:
 private:
   std::string node_name_;
 
+  const double meters_from_wall_;
+  const double degrees_to_rotate_;
+  bool obstacle_detected_ = false;
+
   rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr laser_scan_sub_;
-  rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_unstamped_pub_;
+  rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
+  rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr
+      cmd_vel_unstamped_pub_;
   rclcpp::TimerBase::SharedPtr cmd_vel_unstamped_pub_timer_;
 
-  void laser_scan_clbk_(const sensor_msgs::msg::LaserScan::SharedPtr &msg);
+  void laser_scan_clbk_(const sensor_msgs::msg::LaserScan::SharedPtr msg);
+  void odom_callback_(const nav_msgs::msg::Odometry::SharedPtr msg);
   void cmd_vel_unstamped_pub_timer_clbk_();
 
   void move_forward_();
-  void detect_obstacle_at_x_meters_(const double meters);
   void rotate_of_x_degrees_(const double degrees);
+  bool is_obstacle_detected_at_x_meters_(
+      const double meters, const sensor_msgs::msg::LaserScan::SharedPtr msg);
 };
