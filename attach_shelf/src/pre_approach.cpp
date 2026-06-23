@@ -3,6 +3,7 @@
 #include "rclcpp/create_subscription.hpp"
 #include "rclcpp/create_timer.hpp"
 #include "rclcpp/qos.hpp"
+#include <cmath>
 
 PreApproach::PreApproach(const std::string &node_name)
     : Node(node_name), node_name_(node_name) {
@@ -99,7 +100,31 @@ void PreApproach::stop_robot() {
 }
 
 bool PreApproach::is_obstacle_detected_at_x_meters_(
-    const double meters, const sensor_msgs::msg::LaserScan::SharedPtr msg) {}
+    const double meters, const sensor_msgs::msg::LaserScan::SharedPtr msg) {
+
+  double angle_rad;
+
+  // Front section -> Between -30deg and 30deg
+  bool is_angle_in_front_section =
+      (angle_rad >= -(M_PI / 6) && angle_rad <= M_PI / 6);
+
+  for (size_t i = 0; i < msg->ranges.size(); i++) {
+
+    angle_rad = msg->angle_min + (i * msg->angle_increment);
+
+    // If the ray distance is different from inf, -inf and NAN
+    // and is in the front section
+    if (std::isfinite(msg->ranges[i]) && is_angle_in_front_section) {
+
+      // If obstacle detected
+      if (msg->ranges[i] <= meters) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
 
 void PreApproach::rotate_of_x_degrees_(const double angle_deg) {
 

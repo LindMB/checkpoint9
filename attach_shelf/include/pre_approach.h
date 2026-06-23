@@ -16,7 +16,7 @@ public:
 private:
   std::string node_name_;
 
-  const double meters_from_wall_;
+  const double dist_from_wall_;
   const double degrees_to_rotate_;
 
   double previous_yam_;
