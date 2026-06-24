@@ -13,8 +13,14 @@ find_package(nav_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
+find_package(rosidl_default_generators REQUIRED)
 
 include_directories(include)
+
+# Create a custom message in ${PROJECT_NAME}
+rosidl_generate_interfaces(${PROJECT_NAME}
+	"srv/GoToLoading.srv"
+)
 
 # Create ${PROJECT_NAME}_node executable 
 add_executable(${PROJECT_NAME}_node src/pre_approach.cpp)
@@ -35,9 +41,12 @@ install(TARGETS
 	${PROJECT_NAME}_node
 	DESTINATION lib/${PROJECT_NAME})
 
+# Copy those folders in /share of the package
+# so ROS2 can access all the non-executable files inside it
 install(DIRECTORY
 	launch
 	rviz
+	srv
 	DESTINATION share/${PROJECT_NAME})
 
 if(BUILD_TESTING)
