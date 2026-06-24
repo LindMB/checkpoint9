@@ -57,6 +57,55 @@ ApproachService::identify_shelf_leg_index_groups_(
   return leg_groups;
 }
 
+bool ApproachService::is_legs_center_computable(
+    const std::vector<std::vector<size_t>> &leg_groups) {
+
+  //  If the laser only detects 1 shelf leg or none
+  if (leg_groups.size() < 2) {
+    return false;
+  } else { // If the laser detects the 2 shelf legs (at least)
+    return true;
+  }
+}
+
+void ApproachService::compute_legs_center_(
+    const std::vector<std::vector<size_t>> &leg_groups, double &cart_x,
+    double &cart_y) {
+
+  size_t leg_1_index;
+  size_t leg_2_index;
+
+  // Leg 1
+  leg_1_index =
+      leg_groups[0][leg_groups[0].size() / 2]; // Median index of the group
+
+  double leg_1_angle = this->last_scan_->angle_min +
+                       leg_1_index * this->last_scan_->angle_increment;
+  double leg_1_ray_length = this->last_scan_->ranges[leg_1_index];
+
+  // Leg 1 - Position (x, y)
+  double leg_1_x, leg_1_y;
+  leg_1_x = leg_1_ray_length * std::cos(leg_1_angle); // x = r * cos(theta)
+  leg_1_y = leg_1_ray_length * std::sin(leg_1_angle); // y = r * sin(theta)
+
+  // Leg 2
+  leg_2_index =
+      leg_groups[1][leg_groups[1].size() / 2]; // Median index of the group
+
+  double leg_2_angle = this->last_scan_->angle_min +
+                       leg_2_index * this->last_scan_->angle_increment;
+  double leg_2_ray_length = this->last_scan_->ranges[leg_2_index];
+
+  // Leg 2 - Position (x, y)
+  double leg_2_x, leg_2_y;
+  leg_2_x = leg_2_ray_length * std::cos(leg_2_angle); // x = r * cos(theta)
+  leg_2_y = leg_2_ray_length * std::sin(leg_2_angle); // y = r * sin(theta)
+
+  // Center point between both legs
+  cart_x = (leg_1_x + leg_2_x) / 2.0;
+  cart_y = (leg_1_y + leg_2_y) / 2.0;
+}
+
 void ApproachService::approach_service_clbk_(
     const std::shared_ptr<GoToLoading::Request> request,
     const std::shared_ptr<GoToLoading::Response> response) {
@@ -81,6 +130,19 @@ void ApproachService::approach_service_clbk_(
     }
   }
 
+  // Identify detected entities with the laser scanner
   std::vector<std::vector<size_t>> leg_groups;
   leg_groups = identify_shelf_leg_index_groups_(shelf_leg_detected_indices);
+
+  double cart_x = 0.0;
+  double cart_y = 0.0;
+
+  // Compute the central point between both shelf legs (if possible)
+  if (is_legs_center_computable(leg_groups)) {
+    compute_legs_center_(leg_groups, cart_x, cart_y);
+
+  } else {
+    response->complete = false;
+    return;
+  }
 }
