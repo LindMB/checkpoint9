@@ -23,12 +23,12 @@ private:
   double obstacle_; // Distance from the wall (in m)
   int degrees_;     // Degrees to rotate the robot after stopping
 
-  double previous_yam_;
+  double previous_yaw_;
   double accumulated_yaw_ = 0.0;
   double linear_x_vel = 0.2;
   double angular_z_vel = 0.4;
 
-  bool first_odom_ = false;
+  bool first_odom_ = true;
   bool obstacle_detected_ = false;
   bool rotation_completed_ = false;
   bool pre_approach_completed_ = false;

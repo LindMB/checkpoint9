@@ -60,13 +60,13 @@ void PreApproach::odom_callback_(const nav_msgs::msg::Odometry::SharedPtr msg) {
 
   // For the first odom msg, just init previous_yam_
   if (first_odom_) {
-    this->previous_yam_ = yaw;
+    this->previous_yaw_ = yaw;
     this->first_odom_ = false;
     return;
   }
 
   // Calculate the variation angle around the z-axis
-  double delta_yaw = yaw - this->previous_yam_;
+  double delta_yaw = yaw - this->previous_yaw_;
 
   // Normalize the delta_yaw to the range [-pi, pi]
   if (delta_yaw > M_PI) {
@@ -85,7 +85,7 @@ void PreApproach::odom_callback_(const nav_msgs::msg::Odometry::SharedPtr msg) {
   }
 
   // Update previous_yaw for the next calculation
-  this->previous_yam_ = yaw;
+  this->previous_yaw_ = yaw;
 }
 
 void PreApproach::laser_scan_clbk_(
@@ -235,7 +235,7 @@ int main(int argc, char **argv) {
   RCLCPP_INFO(attach_shelf_node->get_logger(), "Shutting down in 3 seconds...");
   rclcpp::sleep_for(std::chrono::seconds(3));
 
-  // Destroy publishers/subscribers/timers BEFORe shutdown
+  // Destroy publishers/subscribers/timers BEFORE shutdown
   attach_shelf_node.reset();
 
   rclcpp::shutdown();
