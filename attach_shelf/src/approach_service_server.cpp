@@ -1,5 +1,9 @@
 #include "attach_shelf/approach_service_server.h"
+#include "geometry_msgs/msg/detail/transform_stamped__struct.hpp"
+#include "geometry_msgs/msg/transform_stamped.hpp"
+#include <chrono>
 #include <cmath>
+#include <memory>
 #include <vector>
 
 ApproachService::ApproachService() : Node("appraoch_service") {
@@ -9,6 +13,13 @@ ApproachService::ApproachService() : Node("appraoch_service") {
   this->approach_service_ = this->create_service<GoToLoading>(
       service_name, std::bind(&ApproachService::approach_service_clbk_, this,
                               std::placeholders::_1, std::placeholders::_2));
+
+  this->tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>();
+
+  auto tf_timer_period = std::chrono::milliseconds(100);
+  this->tf_timer_ = this->create_wall_timer(
+      tf_timer_period,
+      std::bind(&ApproachService::publish_cart_frame_timer_clbk_, this));
 
   RCLCPP_INFO(this->get_logger(), "%s Approach Service Server Ready...",
               service_name.c_str());
@@ -26,7 +37,7 @@ ApproachService::identify_shelf_leg_index_groups_(
 
   const size_t same_leg_group_threshold = 5;
 
-  // Vector of group of index indicating a leg detected
+  // Vector of group of indices indicating a leg detected
   std::vector<std::vector<size_t>> leg_groups;
   std::vector<size_t> current_group;
 
@@ -57,7 +68,7 @@ ApproachService::identify_shelf_leg_index_groups_(
   return leg_groups;
 }
 
-bool ApproachService::is_legs_center_computable(
+bool ApproachService::is_legs_center_computable_(
     const std::vector<std::vector<size_t>> &leg_groups) {
 
   //  If the laser only detects 1 shelf leg or none
@@ -69,8 +80,7 @@ bool ApproachService::is_legs_center_computable(
 }
 
 void ApproachService::compute_legs_center_(
-    const std::vector<std::vector<size_t>> &leg_groups, double &cart_x,
-    double &cart_y) {
+    const std::vector<std::vector<size_t>> &leg_groups) {
 
   size_t leg_1_index;
   size_t leg_2_index;
@@ -102,8 +112,36 @@ void ApproachService::compute_legs_center_(
   leg_2_y = leg_2_ray_length * std::sin(leg_2_angle); // y = r * sin(theta)
 
   // Center point between both legs
-  cart_x = (leg_1_x + leg_2_x) / 2.0;
-  cart_y = (leg_1_y + leg_2_y) / 2.0;
+  this->cart_x = (leg_1_x + leg_2_x) / 2.0;
+  this->cart_y = (leg_1_y + leg_2_y) / 2.0;
+}
+
+void ApproachService::publish_cart_frame_timer_clbk_() {
+
+  // Publish cart_frame
+  // It is the TF between the laser frame and
+  // the frame located at the central point between both shelf legs
+
+  if (!this->legs_center_computable_) {
+    return;
+  }
+
+  // Header
+  this->cart_frame_tf_.header.stamp = this->now();
+  this->cart_frame_tf_.header.frame_id = this->last_scan_->header.frame_id;
+
+  // Child Frame ID
+  this->cart_frame_tf_.child_frame_id = "cart_frame";
+
+  // Transform
+  this->cart_frame_tf_.transform.translation.x = cart_x;
+  this->cart_frame_tf_.transform.translation.y = cart_y;
+  this->cart_frame_tf_.transform.translation.z = 0.0;
+
+  this->cart_frame_tf_.transform.rotation.w = 1.0;
+
+  // Publish the transform
+  this->tf_broadcaster_->sendTransform(this->cart_frame_tf_);
 }
 
 void ApproachService::approach_service_clbk_(
@@ -134,12 +172,11 @@ void ApproachService::approach_service_clbk_(
   std::vector<std::vector<size_t>> leg_groups;
   leg_groups = identify_shelf_leg_index_groups_(shelf_leg_detected_indices);
 
-  double cart_x = 0.0;
-  double cart_y = 0.0;
-
   // Compute the central point between both shelf legs (if possible)
-  if (is_legs_center_computable(leg_groups)) {
-    compute_legs_center_(leg_groups, cart_x, cart_y);
+  this->legs_center_computable_ = is_legs_center_computable(leg_groups);
+  if (this->legs_center_computable_) {
+
+    compute_legs_center_(leg_groups);
 
   } else {
     response->complete = false;
