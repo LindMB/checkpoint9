@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <csignal>
 #include <functional>
 #include <memory>
 #include <vector>
@@ -374,4 +375,24 @@ void ApproachService::approach_service_clbk_(
     response->complete = false;
     return;
   }
+}
+
+auto approach_service_node = std::shared_ptr<ApproachService>();
+
+void signal_handler(int /*signum*/) { // Intentionally unused
+  approach_service_node->stop_robot();
+  rclcpp::shutdown();
+}
+
+int main(int argc, char **argc) {
+
+  rclcpp::init(argc, argv);
+
+  approach_service_node = std::make_shared<ApproachService>();
+
+  // Register the signal handler for CTRL+C
+  std::signal(SIGINT, signal_handler);
+
+  rclcpp::spin(approach_service_node);
+  return 0;
 }
