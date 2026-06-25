@@ -1,9 +1,12 @@
 #include "attach_shelf/pre_approach.h"
+#include "rclcpp/client.hpp"
 #include "rclcpp/create_publisher.hpp"
 #include "rclcpp/create_subscription.hpp"
 #include "rclcpp/create_timer.hpp"
+#include "rclcpp/logging.hpp"
 #include "rclcpp/qos.hpp"
 #include "rclcpp/utilities.hpp"
+#include <chrono>
 #include <cmath>
 #include <memory>
 #include <tf2/LinearMath/Matrix3x3.h>
@@ -43,9 +46,29 @@ PreApproach::PreApproach(const std::string &node_name)
       timer_period,
       std::bind(&PreApproach::cmd_vel_unstamped_pub_timer_clbk_, this));
 
-  RCLCPP_INFO(this->get_logger(),
-              "PreApproach initialised | obstacle=%.2f degrees=%d", obstacle_,
-              degrees_);
+  const std::string service_name = "/approach_service";
+  this->approach_service_client_ =
+      this->create_client<GoToLoading>(service_name);
+
+  // Wait for the approach service to be available (checks every second)
+  while (!this->approach_service_client_->wait_for_service(
+      std::chrono::seconds(1))) {
+
+    if (!rclcpp::ok()) {
+      RCLCPP_ERROR(this->get_logger(),
+                   "Interrupted while waiting for the service. Exiting.");
+      return;
+    }
+
+    RCLCPP_INFO(this->get_logger(),
+                "Service %s not available, waiting again...",
+                service_name.c_str());
+  }
+
+  RCLCPP_INFO(
+      this->get_logger(),
+      "PreApproach initialised | obstacle=%.2f degrees=%d final_approach=%s",
+      obstacle_, degrees_, this->final_approach_ ? "true" : "false");
 }
 
 void PreApproach::odom_callback_(const nav_msgs::msg::Odometry::SharedPtr msg) {
@@ -197,11 +220,32 @@ void PreApproach::cmd_vel_unstamped_pub_timer_clbk_() {
       /// Rotate of x degrees
       rotate_of_x_degrees_();
 
+      // If the pre approch is completed...
+      if (this->pre_approach_completed_) {
+
+        auto request = std::make_shared<GoToLoading>();
+
+        request->attach_to_shelf = this->final_approach_;
+
+        if (!this->approach_service_client_->service_is_ready()) {
+          RCLCPP_WARN(this->get_logger(), "Failed to call service");
+          return;
+        }
+
+        // Send the request asynchronously
+        // and when a response is received, handle it with
+        // handle_service_response_
+        auto result_future = this->approach_service_client_->async_send_request(
+            request, std::bind(&PreApproach::handle_service_response_, this,
+                               std::placeholders::_1));
+      } else {
+        // Do nothing
+      }
+
     } else {
       /// Move forward
       move_forward_();
     }
-
   } else {
     // Do nothing
   }
@@ -209,6 +253,27 @@ void PreApproach::cmd_vel_unstamped_pub_timer_clbk_() {
 
 bool PreApproach::is_pre_approach_completed() const {
   return this->pre_approach_completed_;
+}
+
+void handle_service_response_(
+    const rclcpp::Client<GoToLoading>::SharedFuture result_future) {
+
+  auto response = result_future.get();
+
+  if (this->final_approach_) {
+
+    if (response->complete) {
+      RCLCPP_INFO(this->get_logger(),
+                  "Request response - Final approch completed successfully");
+    } else {
+      RCLCPP_INFO(this->get_logger(),
+                  "Request response - Final approach not initiated");
+    }
+
+  } else {
+    RCLCPP_INFO(this->get_logger(),
+                "Request response - Shelf legs not dtected properly");
+  }
 }
 
 std::shared_ptr<PreApproach> attach_shelf_node;

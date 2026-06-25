@@ -1,6 +1,8 @@
 #pragma once
+#include "attach_shelf/srv/go_to_loading.hpp"
 #include "geometry_msgs/msg/twist.hpp"
 #include "nav_msgs/msg/odometry.hpp"
+#include "rclcpp/client.hpp"
 #include "rclcpp/publisher.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp/subscription.hpp"
@@ -10,6 +12,8 @@
 class PreApproach : public rclcpp::Node {
 
 public:
+  using GoToLoading = attach_shelf::srv::GoToLoading;
+
   PreApproach(const std::string &node_name);
 
   void stop_robot();
@@ -41,6 +45,8 @@ private:
       cmd_vel_unstamped_pub_;
   rclcpp::TimerBase::SharedPtr cmd_vel_unstamped_pub_timer_;
 
+  rclcpp::Client<GoToLoading>::SharedPtr approach_service_client_;
+
   void laser_scan_clbk_(const sensor_msgs::msg::LaserScan::SharedPtr msg);
   void odom_callback_(const nav_msgs::msg::Odometry::SharedPtr msg);
   void cmd_vel_unstamped_pub_timer_clbk_();
@@ -49,4 +55,7 @@ private:
   void rotate_of_x_degrees_();
   bool is_obstacle_detected_at_x_meters_(
       const sensor_msgs::msg::LaserScan::SharedPtr msg);
+
+  void handle_service_response_(
+      const rclcpp::Client<GoToLoading>::SharedFuture result_future);
 };
