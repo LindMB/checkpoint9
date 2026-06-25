@@ -2,6 +2,7 @@
 
 #include "attach_shelf/srv/go_to_loading.hpp"
 #include "geometry_msgs/msg/point.hpp"
+#include "rclcpp/publisher.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp/service.hpp"
 #include "rclcpp/timer.hpp"
@@ -23,7 +24,11 @@ public:
 private:
   double cart_x = 0.0;
   double cart_y = 0.0;
-  double robot_to_cart_frame_dist_ = 0.0;
+
+  double error_dist_ = 0.0;
+  double error_yaw_ = 0.0;
+
+  double kp_yaw_ = 1.5;
 
   bool legs_center_computable_ = false;
   bool cart_frame_available_ = false;
@@ -45,6 +50,7 @@ private:
   std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
 
   rclcpp::TimerBase::SharedPtr process_approach_timer_;
+  rclcpp::Publisher<geometry_msgs::msg::Twist> cmd_vel_pub_;
 
   void
   approach_service_clbk_(const std::shared_ptr<GoToLoading::Request> request,
@@ -60,7 +66,8 @@ private:
       const std::vector<std::vector<size_t>> &leg_groups);
   void compute_legs_center_(const std::vector<std::vector<size_t>> &leg_groups);
 
-  void calculate_dist_robot_to_cart_frame_();
+  void calculate_errors_robot_to_cart_frame_();
 
+  void move_robot_to_cart_frame_();
   void process_approach_timer_clbk_();
 };

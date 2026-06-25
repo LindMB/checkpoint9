@@ -19,7 +19,7 @@ ApproachService::ApproachService() : Node("appraoch_service") {
 
   this->laser_scan_sub_ =
       this->create_subscription<sensor_msgs::msg::LaserScan>(
-          "/rb1_robot/scan", qos,
+          "/scan", qos,
           std::bind(&ApproachService::laser_scan_clbk_, this,
                     std::placeholders::_1));
 
@@ -41,6 +41,9 @@ ApproachService::ApproachService() : Node("appraoch_service") {
   this->process_approach_timer_ = this->create_wall_timer(
       tf_timer_period,
       std::bind(&ApproachService::process_approach_timer_clbk_, this));
+
+  this->cmd_vel_pub_ = this->create_publisher<geometry_msgs::msg::Twist>(
+      "/diffbot_base_controller/cmd_vel_unstamped", 10);
 
   RCLCPP_INFO(this->get_logger(), "%s Approach Service Server Ready...",
               service_name.c_str());
@@ -168,7 +171,7 @@ void ApproachService::publish_cart_frame_timer_clbk_() {
   this->cart_frame_available_ = true;
 }
 
-void ApproachService::calculate_dist_robot_to_cart_frame_() {
+void ApproachService::calculate_errors_robot_to_cart_frame_() {
 
   // If the transform is not published yet...
   if (!this->cart_frame_available_) {
@@ -199,7 +202,29 @@ void ApproachService::calculate_dist_robot_to_cart_frame_() {
   double x = tf_stamped.transform.translation.x;
   double y = tf_stamped.transform.translation.y;
 
-  this->robot_to_cart_frame_dist = std::sqrt(x * x + y * y);
+  this->error_dist_ = std::sqrt(x * x + y * y);
+  this->error_yaw_ = std::atan2(y, x);
+}
+
+void ApproachService::move_robot_to_cart_frame_() {
+
+  auto move_msg = geometry_msgs::msg::Twist();
+
+  double error_threshold = 0.03; // 3 cm
+
+  if (this->error_dist_ > error_threshold) {
+
+    // Move forward slowly
+    move_msg.linear.x = 0.25;
+    // Do not rotate faster than 0.4m/s
+    move_msg.angular.z = std::clamp(this->kp_yaw_ * this->error_yaw, -0.4, 0.4);
+
+  } else {
+    move_msg.linear.x = 0.0;
+    move_msg.angular.z = 0.0;
+  }
+
+  this->cmd_vel_pub_->publish(move_msg);
 }
 
 void ApproachService::process_approach_timer_clbk_() {
@@ -211,6 +236,7 @@ void ApproachService::process_approach_timer_clbk_() {
 
   calculate_dist_robot_to_cart_frame_();
 
+  move_robot_to_cart_frame();
 }
 
 void ApproachService::approach_service_clbk_(
