@@ -51,7 +51,7 @@ ament_target_dependencies(approach_service_node
 # Create ${PROJECT_NAME}_v2_node executable 
 add_executable(${PROJECT_NAME}_v2_node src/pre_approach_v2.cpp)
 
-# Add dependencies to ${PROJECT_NAME}_node executable
+# Add dependencies to ${PROJECT_NAME}_v2_node executable
 ament_target_dependencies(${PROJECT_NAME}_v2_node
   rclcpp
   geometry_msgs

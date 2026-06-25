@@ -1,4 +1,4 @@
-#include "attach_shelf/pre_approach.h"
+#include "attach_shelf/pre_approach_v2.h"
 #include "rclcpp/client.hpp"
 #include "rclcpp/create_publisher.hpp"
 #include "rclcpp/create_subscription.hpp"
@@ -223,7 +223,7 @@ void PreApproach::cmd_vel_unstamped_pub_timer_clbk_() {
       // If the pre approch is completed...
       if (this->pre_approach_completed_) {
 
-        auto request = std::make_shared<GoToLoading>();
+        auto request = std::make_shared<GoToLoading::Request>();
 
         request->attach_to_shelf = this->final_approach_;
 
@@ -255,7 +255,7 @@ bool PreApproach::is_pre_approach_completed() const {
   return this->pre_approach_completed_;
 }
 
-void handle_service_response_(
+void PreApproach::handle_service_response_(
     const rclcpp::Client<GoToLoading>::SharedFuture result_future) {
 
   auto response = result_future.get();
@@ -272,7 +272,7 @@ void handle_service_response_(
 
   } else {
     RCLCPP_INFO(this->get_logger(),
-                "Request response - Shelf legs not dtected properly");
+                "Request response - Shelf legs not detected properly");
   }
 }
 
