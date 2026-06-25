@@ -22,7 +22,7 @@ public:
 
   ApproachService();
 
-  stop_robot();
+  void stop_robot();
 
   ~ApproachService() = default;
 
@@ -35,6 +35,7 @@ private:
 
   double kp_yaw_ = 1.5;
 
+  double previous_dist_;
   double accumulated_dist_;
   const double dist_to_move_under_shelf_ = 0.30; // 30 cm
 
@@ -43,6 +44,7 @@ private:
   bool start_final_approach_ = false;
   bool cart_frame_reached_ = false;
 
+  bool first_odom_ = true;
   bool dist_under_shelf_travelled_ = false;
 
   std::string robot_frame_ = "/robot_base_link";
@@ -61,7 +63,7 @@ private:
   std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
 
   rclcpp::TimerBase::SharedPtr process_approach_timer_;
-  rclcpp::Publisher<geometry_msgs::msg::Twist> cmd_vel_pub_;
+  rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
 
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
 

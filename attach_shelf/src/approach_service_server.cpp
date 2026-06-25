@@ -3,6 +3,7 @@
 #include "geometry_msgs/msg/detail/twist__struct.hpp"
 #include "geometry_msgs/msg/transform_stamped.hpp"
 #include "nav_msgs/msg/detail/odometry__struct.hpp"
+#include "rclcpp/logging.hpp"
 #include "rclcpp/qos.hpp"
 #include "sensor_msgs/msg/detail/laser_scan__struct.hpp"
 #include "tf2/LinearMath/Quaternion.h"
@@ -315,6 +316,9 @@ void ApproachService::process_approach_timer_clbk_() {
         stop_robot();
         this->dist_under_shelf_travelled_ = true;
 
+        RCLCPP_INFO(this->get_logger(),
+                    "Final approach completed successfully !");
+
         this->start_final_approach_ = false; // Reset start_final_approach_
         this->accumulated_dist_ = 0.0;       // Reset accumulated_dist_
 
@@ -384,7 +388,7 @@ void signal_handler(int /*signum*/) { // Intentionally unused
   rclcpp::shutdown();
 }
 
-int main(int argc, char **argc) {
+int main(int argc, char **argv) {
 
   rclcpp::init(argc, argv);
 
