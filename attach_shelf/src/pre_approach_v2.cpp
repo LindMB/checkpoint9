@@ -15,10 +15,12 @@ PreApproach::PreApproach(const std::string &node_name)
   // Declare launch parameters (typed, with defaults)
   this->declare_parameter<double>("obstacle", 0.2);
   this->declare_parameter<int>("degrees", 90);
+  this->declare_parameter<bool>("final_approach", true);
 
   // Read launch parameters once at startup
   this->obstacle_ = this->get_parameter("obstacle").as_double();
   this->degrees_ = this->get_parameter("degrees").as_int();
+  this->final_approach_ = this->get_parameter("final_approach").as_bool();
 
   auto qos = rclcpp::QoS(10).reliability(rclcpp::ReliabilityPolicy::Reliable);
 
