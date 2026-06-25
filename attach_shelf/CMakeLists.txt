@@ -48,6 +48,19 @@ ament_target_dependencies(approach_service_node
   tf2_ros
 )
 
+# Create ${PROJECT_NAME}_v2_node executable 
+add_executable(${PROJECT_NAME}_v2_node src/pre_approach_v2.cpp)
+
+# Add dependencies to ${PROJECT_NAME}_node executable
+ament_target_dependencies(${PROJECT_NAME}_v2_node
+  rclcpp
+  geometry_msgs
+  nav_msgs 
+  sensor_msgs 
+  tf2
+  tf2_ros
+)
+
 # Link the C++ code generated to create the custom message(s)
 # to approach_service_node 
 rosidl_get_typesupport_target(cpp_typesupport_target
@@ -55,6 +68,9 @@ rosidl_get_typesupport_target(cpp_typesupport_target
   "rosidl_typesupport_cpp"
 )
 target_link_libraries(approach_service_node
+  "${cpp_typesupport_target}"
+)
+target_link_libraries(${PROJECT_NAME}_v2_node
   "${cpp_typesupport_target}"
 )
 
@@ -68,6 +84,12 @@ install(TARGETS
 # so ROS2 can find it when doing ros2 run
 install(TARGETS 
 	approach_service_node
+	DESTINATION lib/${PROJECT_NAME})
+
+# Copy ${PROJECT_NAME}_v2_node executable into /install of its package
+# so ROS2 can find it when doing ros2 run
+install(TARGETS 
+	${PROJECT_NAME}_v2_node
 	DESTINATION lib/${PROJECT_NAME})
 
 # Copy those folders in /share of the package
