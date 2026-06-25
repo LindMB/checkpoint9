@@ -2,9 +2,11 @@
 
 #include "attach_shelf/srv/go_to_loading.hpp"
 #include "geometry_msgs/msg/point.hpp"
+#include "nav_msgs/msg/odometry.hpp"
 #include "rclcpp/publisher.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp/service.hpp"
+#include "rclcpp/subscription.hpp"
 #include "rclcpp/timer.hpp"
 #include "sensor_msgs/msg/laser_scan.hpp"
 #include "tf2_ros/buffer.h"
@@ -19,6 +21,9 @@ public:
   using GoToLoading = attach_shelf::srv::GoToLoading;
 
   ApproachService();
+
+  stop_robot();
+
   ~ApproachService() = default;
 
 private:
@@ -30,9 +35,15 @@ private:
 
   double kp_yaw_ = 1.5;
 
+  double accumulated_dist_;
+  const double dist_to_move_under_shelf_ = 0.30; // 30 cm
+
   bool legs_center_computable_ = false;
   bool cart_frame_available_ = false;
   bool start_final_approach_ = false;
+  bool cart_frame_reached_ = false;
+
+  bool dist_under_shelf_travelled_ = false;
 
   std::string robot_frame_ = "/robot_base_link";
   std::string target_frame_ = "/cart_frame";
@@ -52,12 +63,18 @@ private:
   rclcpp::TimerBase::SharedPtr process_approach_timer_;
   rclcpp::Publisher<geometry_msgs::msg::Twist> cmd_vel_pub_;
 
+  rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
+
   void
   approach_service_clbk_(const std::shared_ptr<GoToLoading::Request> request,
                          const std::shared_ptr<GoToLoading::Response> response);
   void laser_scan_clbk_(const sensor_msgs::msg::LaserScan::SharedPtr msg);
 
   void publish_cart_frame_timer_clbk_();
+
+  void process_approach_timer_clbk_();
+
+  void odom_callback_(const nav_msgs::msg::Odometry::SharedPtr msg);
 
   std::vector<std::vector<size_t>>
   identify_shelf_leg_index_groups_(const std::vector<size_t> &indices_vect);
@@ -69,5 +86,5 @@ private:
   void calculate_errors_robot_to_cart_frame_();
 
   void move_robot_to_cart_frame_();
-  void process_approach_timer_clbk_();
+  void move_forward_();
 };

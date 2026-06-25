@@ -1,17 +1,21 @@
 #include "attach_shelf/approach_service_server.h"
 #include "geometry_msgs/msg/detail/transform_stamped__struct.hpp"
+#include "geometry_msgs/msg/detail/twist__struct.hpp"
 #include "geometry_msgs/msg/transform_stamped.hpp"
+#include "nav_msgs/msg/detail/odometry__struct.hpp"
 #include "rclcpp/qos.hpp"
 #include "sensor_msgs/msg/detail/laser_scan__struct.hpp"
+#include "tf2/LinearMath/Quaternion.h"
 #include "tf2/time.h"
 #include "tf2_ros/transform_listener.h"
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <functional>
 #include <memory>
 #include <vector>
 
-ApproachService::ApproachService() : Node("appraoch_service") {
+ApproachService::ApproachService() : Node("approach_service") {
 
   std::string service_name = "/approach_shelf";
 
@@ -45,6 +49,10 @@ ApproachService::ApproachService() : Node("appraoch_service") {
   this->cmd_vel_pub_ = this->create_publisher<geometry_msgs::msg::Twist>(
       "/diffbot_base_controller/cmd_vel_unstamped", 10);
 
+  this->odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
+      "/odom", qos,
+      std::bind(&ApproachService::odom_callback_, this, std::placeholders::_1));
+
   RCLCPP_INFO(this->get_logger(), "%s Approach Service Server Ready...",
               service_name.c_str());
 }
@@ -58,6 +66,10 @@ void ApproachService::laser_scan_clbk_(
 std::vector<std::vector<size_t>>
 ApproachService::identify_shelf_leg_index_groups_(
     const std::vector<size_t> &indices_vect) {
+
+  if (indices_vect.empty()) {
+    return {};
+  }
 
   const size_t same_leg_group_threshold = 5;
 
@@ -173,8 +185,9 @@ void ApproachService::publish_cart_frame_timer_clbk_() {
 
 void ApproachService::calculate_errors_robot_to_cart_frame_() {
 
-  // If the transform is not published yet...
-  if (!this->cart_frame_available_) {
+  // If the transform is not published yet
+  // Or if the robot has already reached cart_frame
+  if (!this->cart_frame_available_ || this->cart_frame_reached_) {
     return;
   }
 
@@ -217,26 +230,100 @@ void ApproachService::move_robot_to_cart_frame_() {
     // Move forward slowly
     move_msg.linear.x = 0.25;
     // Do not rotate faster than 0.4m/s
-    move_msg.angular.z = std::clamp(this->kp_yaw_ * this->error_yaw, -0.4, 0.4);
+    move_msg.angular.z =
+        std::clamp(this->kp_yaw_ * this->error_yaw_, -0.4, 0.4);
 
   } else {
     move_msg.linear.x = 0.0;
     move_msg.angular.z = 0.0;
+
+    this->cart_frame_reached_ = true;
   }
 
   this->cmd_vel_pub_->publish(move_msg);
 }
 
+void ApproachService::odom_callback_(
+    const nav_msgs::msg::Odometry::SharedPtr msg) {
+
+  // If the robot is not located at cart_frame...
+  if (!this->cart_frame_reached_) {
+    return;
+  }
+
+  double x = msg->pose.pose.position.x;
+  double y = msg->pose.pose.position.y;
+
+  double dist = std::sqrt(x * x + y * y);
+
+  // For the first odom msg, just init previous_dist_
+  if (this->first_odom_) {
+    this->previous_dist_ = dist;
+    this->first_odom_ = false;
+    return;
+  }
+
+  // Calculate the variation distance
+  double delta_dist = dist - this->previous_dist_;
+
+  // Calculate the cumulated travelled distance of the robot in straight line
+  this->accumulated_dist_ += std::abs(delta_dist);
+
+  // Update previous_dist_
+  this->previous_dist_ = dist;
+}
+
+void ApproachService::move_forward_() {
+
+  auto move_msg = geometry_msgs::msg::Twist();
+
+  move_msg.linear.x = 0.15;
+  move_msg.angular.z = 0.0;
+
+  this->cmd_vel_pub_->publish(move_msg);
+}
+
+void ApproachService::stop_robot() {
+
+  auto stop_msg = geometry_msgs::msg::Twist();
+
+  this->cmd_vel_pub_->publish(stop_msg);
+}
+
 void ApproachService::process_approach_timer_clbk_() {
 
-  // If it has NOT been request to start the final approach...
+  // If it has NOT been requested to start the final approach...
   if (!this->start_final_approach_) {
     return;
   }
 
-  calculate_dist_robot_to_cart_frame_();
+  calculate_errors_robot_to_cart_frame_();
 
-  move_robot_to_cart_frame();
+  if (!this->cart_frame_reached_) {
+    move_robot_to_cart_frame_();
+
+  } else { // cart_frame has been reached already...
+
+    // If distance under shelf not travelled yet...
+    if (!this->dist_under_shelf_travelled_) {
+
+      if (this->accumulated_dist_ < this->dist_to_move_under_shelf_) {
+        move_forward_();
+
+      } else {
+        stop_robot();
+        this->dist_under_shelf_travelled_ = true;
+
+        this->start_final_approach_ = false; // Reset start_final_approach_
+        this->accumulated_dist_ = 0.0;       // Reset accumulated_dist_
+
+        // Reset first_odom_ since to force odom calculations when the robot is
+        this->first_odom_ = true;
+      }
+    } else {
+      // Do nothing
+    }
+  }
 }
 
 void ApproachService::approach_service_clbk_(
@@ -274,12 +361,13 @@ void ApproachService::approach_service_clbk_(
     compute_legs_center_(leg_groups);
 
     // If it has been requested to start the final approach
-    if (request->attach_shelf) {
+    if (request->attach_to_shelf) {
       this->start_final_approach_ = true;
     } else {
       // Do nothing
     }
 
+    // Shelf legs detected and request successfully processed
     response->complete = true;
 
   } else {
