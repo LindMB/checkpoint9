@@ -2,6 +2,7 @@
 
 #include "attach_shelf/srv/go_to_loading.hpp"
 #include "geometry_msgs/msg/point.hpp"
+#include "geometry_msgs/msg/transform_stamped.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "rclcpp/publisher.hpp"
 #include "rclcpp/rclcpp.hpp"
@@ -40,6 +41,7 @@ private:
   const double dist_to_move_under_shelf_ = 0.30; // 30 cm
 
   bool legs_center_computable_ = false;
+  bool cart_frame_tf_ready_ = false;
   bool cart_frame_available_ = false;
   bool start_final_approach_ = false;
   bool cart_frame_reached_ = false;
@@ -47,8 +49,8 @@ private:
   bool first_odom_ = true;
   bool dist_under_shelf_travelled_ = false;
 
-  std::string robot_frame_ = "/robot_base_link";
-  std::string target_frame_ = "/cart_frame";
+  std::string robot_frame_ = "robot_base_link";
+  std::string target_frame_ = "cart_frame";
 
   sensor_msgs::msg::LaserScan::SharedPtr last_scan_;
 
@@ -84,6 +86,7 @@ private:
   bool is_legs_center_computable_(
       const std::vector<std::vector<size_t>> &leg_groups);
   void compute_legs_center_(const std::vector<std::vector<size_t>> &leg_groups);
+  void prepare_cart_frame_tf_();
 
   void calculate_errors_robot_to_cart_frame_();
 

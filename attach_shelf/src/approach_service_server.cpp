@@ -1,13 +1,13 @@
 #include "attach_shelf/approach_service_server.h"
-#include "geometry_msgs/msg/detail/transform_stamped__struct.hpp"
-#include "geometry_msgs/msg/detail/twist__struct.hpp"
 #include "geometry_msgs/msg/transform_stamped.hpp"
-#include "nav_msgs/msg/detail/odometry__struct.hpp"
+#include "geometry_msgs/msg/twist.hpp"
+#include "nav_msgs/msg/odometry.hpp"
 #include "rclcpp/logging.hpp"
 #include "rclcpp/qos.hpp"
-#include "sensor_msgs/msg/detail/laser_scan__struct.hpp"
+#include "sensor_msgs/msg/laser_scan.hpp"
 #include "tf2/LinearMath/Quaternion.h"
 #include "tf2/time.h"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
 #include "tf2_ros/transform_listener.h"
 #include <algorithm>
 #include <chrono>
@@ -109,7 +109,7 @@ ApproachService::identify_shelf_leg_index_groups_(
 bool ApproachService::is_legs_center_computable_(
     const std::vector<std::vector<size_t>> &leg_groups) {
 
-  //  If the laser only detects 1 shelf leg or none
+  // If the laser only detects 1 shelf leg or none
   if (leg_groups.size() < 2) {
     return false;
   } else { // If the laser detects the 2 shelf legs (at least)
@@ -154,29 +154,66 @@ void ApproachService::compute_legs_center_(
   this->cart_y = (leg_1_y + leg_2_y) / 2.0;
 }
 
-void ApproachService::publish_cart_frame_timer_clbk_() {
+void ApproachService::prepare_cart_frame_tf_() {
 
-  // Publish cart_frame
-  // It is the TF between the laser frame and
-  // the frame located at the central point between both shelf legs
+  // Create the central point between both legs in the LASER FRAME
+  geometry_msgs::msg::PointStamped cart_point_laser_frame;
 
-  if (!this->legs_center_computable_) {
+  cart_point_laser_frame.header.frame_id = this->last_scan_->header.frame_id;
+  cart_point_laser_frame.header.stamp = this->last_scan_->header.stamp;
+
+  cart_point_laser_frame.point.x = this->cart_x;
+  cart_point_laser_frame.point.y = this->cart_y;
+  cart_point_laser_frame.point.z = 0.0;
+
+  // Create the central point between both legs in the ODOM FRAME
+  geometry_msgs::msg::PointStamped cart_point_odom_frame;
+
+  // Convert the central point from the laser frame to the odom frame
+  try {
+    cart_point_odom_frame = this->tf_buffer_->transform(
+        cart_point_laser_frame, "odom",
+        tf2::durationFromSec(1.0)); // Wait 1 sec for the TF to be available
+
+  } catch (const tf2::TransformException &ex) {
+    RCLCPP_WARN(this->get_logger(),
+                "Could not transform cart point to odom frame: %s", ex.what());
     return;
   }
 
+  /// Update the TF of cart_frame into odom
+
   // Header
-  this->cart_frame_tf_.header.stamp = this->now();
-  this->cart_frame_tf_.header.frame_id = this->last_scan_->header.frame_id;
+  // this->cart_frame_tf_.header.stamp will be filled before each tf publication
+  this->cart_frame_tf_.header.frame_id = "odom";
 
   // Child Frame ID
   this->cart_frame_tf_.child_frame_id = "cart_frame";
 
   // Transform
-  this->cart_frame_tf_.transform.translation.x = cart_x;
-  this->cart_frame_tf_.transform.translation.y = cart_y;
+  this->cart_frame_tf_.transform.translation.x = cart_point_odom_frame.point.x;
+  this->cart_frame_tf_.transform.translation.y = cart_point_odom_frame.point.y;
   this->cart_frame_tf_.transform.translation.z = 0.0;
 
+  this->cart_frame_tf_.transform.rotation.x = 0.0;
+  this->cart_frame_tf_.transform.rotation.y = 0.0;
+  this->cart_frame_tf_.transform.rotation.z = 0.0;
   this->cart_frame_tf_.transform.rotation.w = 1.0;
+
+  this->cart_frame_tf_ready_ = true;
+}
+
+void ApproachService::publish_cart_frame_timer_clbk_() {
+
+  // Publish cart_frame
+  // It is the TF between the odom frame and
+  // the frame located at the central point between both shelf legs
+  if (!this->cart_frame_tf_ready_) {
+    return;
+  }
+
+  // Update the stamp before publishing
+  this->cart_frame_tf_.header.stamp = this->now();
 
   // Publish the transform
   this->tf_broadcaster_->sendTransform(this->cart_frame_tf_);
@@ -201,8 +238,8 @@ void ApproachService::calculate_errors_robot_to_cart_frame_() {
   try {
     // Get the position of Target Frame in the Reference Frame
     tf_stamped = this->tf_buffer_->lookupTransform(
-        this->robot_frame_,  // Reference frame
-        this->target_frame_, // Target frame
+        this->robot_frame_,  // Reference frame (robot_base_link)
+        this->target_frame_, // Target frame (cart_frame)
         tf2::TimePointZero   // Most recent transform
     );
 
@@ -225,7 +262,7 @@ void ApproachService::move_robot_to_cart_frame_() {
 
   auto move_msg = geometry_msgs::msg::Twist();
 
-  double error_threshold = 0.03; // 3 cm
+  double error_threshold = 0.02; // 2 cm
 
   if (this->error_dist_ > error_threshold) {
 
@@ -234,6 +271,9 @@ void ApproachService::move_robot_to_cart_frame_() {
     // Do not rotate faster than 0.4m/s
     move_msg.angular.z =
         std::clamp(this->kp_yaw_ * this->error_yaw_, -0.4, 0.4);
+
+    RCLCPP_INFO(this->get_logger(), "Error Distance under shelf : %f",
+                this->error_dist_);
 
   } else {
     move_msg.linear.x = 0.0;
@@ -249,7 +289,7 @@ void ApproachService::odom_callback_(
     const nav_msgs::msg::Odometry::SharedPtr msg) {
 
   // If the robot is not located at cart_frame...
-  if (!this->cart_frame_reached_) {
+  if (this->cart_frame_reached_ == false) {
     return;
   }
 
@@ -312,6 +352,9 @@ void ApproachService::process_approach_timer_clbk_() {
       if (this->accumulated_dist_ < this->dist_to_move_under_shelf_) {
         move_forward_();
 
+        RCLCPP_INFO(this->get_logger(), "accumulated_dist_ : %f",
+                    this->accumulated_dist_);
+
       } else {
         stop_robot();
         this->dist_under_shelf_travelled_ = true;
@@ -340,6 +383,7 @@ void ApproachService::approach_service_clbk_(
   // If the laser scanner is not working
   if (!this->last_scan_) {
     response->complete = false;
+    RCLCPP_WARN(this->get_logger(), "Laser scan is not working.");
     return;
   }
 
@@ -347,7 +391,7 @@ void ApproachService::approach_service_clbk_(
 
   for (size_t i = 0; i < this->last_scan_->intensities.size(); i++) {
 
-    bool is_shelf_leg_detected = (this->last_scan_->intensities[i] > 8000);
+    bool is_shelf_leg_detected = (this->last_scan_->intensities[i] > 6000);
 
     // If the ray intensity is different from inf, -inf and NAN and ...
     if (std::isfinite(this->last_scan_->ranges[i]) && is_shelf_leg_detected) {
@@ -359,11 +403,17 @@ void ApproachService::approach_service_clbk_(
   std::vector<std::vector<size_t>> leg_groups;
   leg_groups = identify_shelf_leg_index_groups_(shelf_leg_detected_indices);
 
+  RCLCPP_INFO(this->get_logger(), "Leg groups = %zu", leg_groups.size());
+
   // Compute the central point between both shelf legs (if possible)
   this->legs_center_computable_ = is_legs_center_computable_(leg_groups);
   if (this->legs_center_computable_) {
 
     compute_legs_center_(leg_groups);
+
+    prepare_cart_frame_tf_();
+
+    // cart_frame_tf_ publication starts here...
 
     // If it has been requested to start the final approach
     if (request->attach_to_shelf) {
@@ -377,6 +427,7 @@ void ApproachService::approach_service_clbk_(
 
   } else {
     response->complete = false;
+    RCLCPP_WARN(this->get_logger(), "The central point is not computable.");
     return;
   }
 }
