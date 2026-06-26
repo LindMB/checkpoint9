@@ -36,7 +36,8 @@ private:
 
   double kp_yaw_ = 1.5;
 
-  double previous_dist_;
+  double previous_x_;
+  double previous_y_;
   double accumulated_dist_;
   const double dist_to_move_under_shelf_ = 0.30; // 30 cm
 
@@ -45,6 +46,7 @@ private:
   bool cart_frame_available_ = false;
   bool start_final_approach_ = false;
   bool cart_frame_reached_ = false;
+  bool is_final_approached_completed_ = false;
 
   bool first_odom_ = true;
   bool dist_under_shelf_travelled_ = false;
@@ -88,7 +90,7 @@ private:
   void compute_legs_center_(const std::vector<std::vector<size_t>> &leg_groups);
   void prepare_cart_frame_tf_();
 
-  void calculate_errors_robot_to_cart_frame_();
+  bool is_error_robot_to_cart_frame_computable_();
 
   void move_robot_to_cart_frame_();
   void move_forward_();

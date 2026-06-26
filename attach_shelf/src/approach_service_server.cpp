@@ -213,7 +213,7 @@ void ApproachService::publish_cart_frame_timer_clbk_() {
   }
 
   // Update the stamp before publishing
-  this->cart_frame_tf_.header.stamp = this->now();
+  this->cart_frame_tf_.header.stamp = this->last_scan_->header.stamp;
 
   // Publish the transform
   this->tf_broadcaster_->sendTransform(this->cart_frame_tf_);
@@ -222,12 +222,12 @@ void ApproachService::publish_cart_frame_timer_clbk_() {
   this->cart_frame_available_ = true;
 }
 
-void ApproachService::calculate_errors_robot_to_cart_frame_() {
+bool ApproachService::is_error_robot_to_cart_frame_computable_() {
 
   // If the transform is not published yet
   // Or if the robot has already reached cart_frame
   if (!this->cart_frame_available_ || this->cart_frame_reached_) {
-    return;
+    return false;
   }
 
   /// Get the most recent transform between
@@ -247,7 +247,7 @@ void ApproachService::calculate_errors_robot_to_cart_frame_() {
     RCLCPP_WARN(this->get_logger(), "TF from %s to %s unavailable : %s",
                 this->robot_frame_.c_str(), this->target_frame_.c_str(),
                 e.what());
-    return;
+    return false;
   }
 
   // Calculate the distance error
@@ -256,6 +256,8 @@ void ApproachService::calculate_errors_robot_to_cart_frame_() {
 
   this->error_dist_ = std::sqrt(x * x + y * y);
   this->error_yaw_ = std::atan2(y, x);
+
+  return true;
 }
 
 void ApproachService::move_robot_to_cart_frame_() {
@@ -289,30 +291,33 @@ void ApproachService::odom_callback_(
     const nav_msgs::msg::Odometry::SharedPtr msg) {
 
   // If the robot is not located at cart_frame...
-  if (this->cart_frame_reached_ == false) {
+  if (!this->cart_frame_reached_) {
     return;
   }
 
+  // Robot Current position
   double x = msg->pose.pose.position.x;
   double y = msg->pose.pose.position.y;
 
-  double dist = std::sqrt(x * x + y * y);
-
-  // For the first odom msg, just init previous_dist_
+  // For the first odom msg, just init (x, y) of the previous position
   if (this->first_odom_) {
-    this->previous_dist_ = dist;
+    this->previous_x_ = x;
+    this->previous_y_ = y;
     this->first_odom_ = false;
     return;
   }
 
-  // Calculate the variation distance
-  double delta_dist = dist - this->previous_dist_;
+  // Difference in x between the current and the previous robot position
+  double dx = x - this->previous_x_;
+  // Difference in y between the current and the previous robot position
+  double dy = y - this->previous_y_;
 
-  // Calculate the cumulated travelled distance of the robot in straight line
-  this->accumulated_dist_ += std::abs(delta_dist);
+  // Calculate the cumulated travelled distance of the robot between 2 positions
+  this->accumulated_dist_ += std::sqrt(dx * dx + dy * dy);
 
-  // Update previous_dist_
-  this->previous_dist_ = dist;
+  // Update (x, y) of the previous position
+  this->previous_x_ = x;
+  this->previous_y_ = y;
 }
 
 void ApproachService::move_forward_() {
@@ -339,37 +344,47 @@ void ApproachService::process_approach_timer_clbk_() {
     return;
   }
 
-  calculate_errors_robot_to_cart_frame_();
-
   if (!this->cart_frame_reached_) {
+
+    if (!is_error_robot_to_cart_frame_computable_()) {
+      return;
+    }
+
+    /*RCLCPP_INFO(this->get_logger(), "this->now() = %.3f",
+                this->now().seconds());
+
+    RCLCPP_INFO(this->get_logger(), "scan stamp = %.3f",
+                rclcpp::Time(this->last_scan_->header.stamp).seconds());*/
+
     move_robot_to_cart_frame_();
 
-  } else { // cart_frame has been reached already...
+    // return to guarantee that the robot will move to cart_frame
+    // as long as it does not reach cart_frame
+    return;
+  }
 
-    // If distance under shelf not travelled yet...
-    if (!this->dist_under_shelf_travelled_) {
+  // Only if cart_frame has been reached...
+  // Check the distance under shelf the robot has to travel
+  if (!this->dist_under_shelf_travelled_) {
 
-      if (this->accumulated_dist_ < this->dist_to_move_under_shelf_) {
-        move_forward_();
+    if (this->accumulated_dist_ < this->dist_to_move_under_shelf_) {
+      move_forward_();
 
-        RCLCPP_INFO(this->get_logger(), "accumulated_dist_ : %f",
-                    this->accumulated_dist_);
+      RCLCPP_INFO(this->get_logger(), "accumulated_dist_ : %f",
+                  this->accumulated_dist_);
 
-      } else {
-        stop_robot();
-        this->dist_under_shelf_travelled_ = true;
-
-        RCLCPP_INFO(this->get_logger(),
-                    "Final approach completed successfully !");
-
-        this->start_final_approach_ = false; // Reset start_final_approach_
-        this->accumulated_dist_ = 0.0;       // Reset accumulated_dist_
-
-        // Reset first_odom_ since to force odom calculations when the robot is
-        this->first_odom_ = true;
-      }
     } else {
-      // Do nothing
+      stop_robot();
+      this->dist_under_shelf_travelled_ = true;
+
+      RCLCPP_INFO(this->get_logger(),
+                  "Final approach completed successfully !");
+
+      this->start_final_approach_ = false; // Reset start_final_approach_
+      this->accumulated_dist_ = 0.0;       // Reset accumulated_dist_
+
+      // Reset first_odom_ since to force odom calculations when the robot is
+      this->first_odom_ = true;
     }
   }
 }
