@@ -46,7 +46,7 @@ PreApproach::PreApproach(const std::string &node_name)
       timer_period,
       std::bind(&PreApproach::cmd_vel_unstamped_pub_timer_clbk_, this));
 
-  const std::string service_name = "/approach_service";
+  const std::string service_name = "/approach_shelf";
   this->approach_service_client_ =
       this->create_client<GoToLoading>(service_name);
 
@@ -264,7 +264,7 @@ void PreApproach::handle_service_response_(
 
     if (response->complete) {
       RCLCPP_INFO(this->get_logger(),
-                  "Request response - Final approch completed successfully");
+                  "Request response - Final approach completed successfully");
     } else {
       RCLCPP_INFO(this->get_logger(),
                   "Request response - Final approach not initiated");
@@ -292,19 +292,6 @@ int main(int argc, char **argv) {
   // Register the signal handler for CTRL+C
   std::signal(SIGINT, signal_handler);
 
-  rclcpp::Rate rate(10); // 10Hz = 1/10 sec = 0,1 sec = 100 ms
-
-  while (rclcpp::ok() && !attach_shelf_node->is_pre_approach_completed()) {
-    rclcpp::spin_some(attach_shelf_node);
-    rate.sleep();
-  }
-
-  RCLCPP_INFO(attach_shelf_node->get_logger(), "Shutting down in 3 seconds...");
-  rclcpp::sleep_for(std::chrono::seconds(3));
-
-  // Destroy publishers/subscribers/timers BEFORE shutdown
-  attach_shelf_node.reset();
-
-  rclcpp::shutdown();
+  rclcpp::spin(attach_shelf_node);
   return 0;
 }
