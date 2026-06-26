@@ -447,6 +447,10 @@ void ApproachService::approach_service_clbk_(
   }
 }
 
+bool ApproachService::is_final_approach_completed() {
+  return this->dist_under_shelf_travelled_;
+}
+
 auto approach_service_node = std::shared_ptr<ApproachService>();
 
 void signal_handler(int /*signum*/) { // Intentionally unused
@@ -463,6 +467,21 @@ int main(int argc, char **argv) {
   // Register the signal handler for CTRL+C
   std::signal(SIGINT, signal_handler);
 
-  rclcpp::spin(approach_service_node);
+  rclcpp::Rate rate(10); // 10Hz = 1/10 sec = 0,1 sec = 100 ms
+
+  while (rclcpp::ok() &&
+         !approach_service_node->is_final_approach_completed()) {
+    rclcpp::spin_some(approach_service_node);
+    rate.sleep();
+  }
+
+  RCLCPP_INFO(approach_service_node->get_logger(),
+              "Shutting down in 3 seconds...");
+  rclcpp::sleep_for(std::chrono::seconds(3));
+
+  // Destroy publishers/subscribers/timers BEFORE shutdown
+  approach_service_node.reset();
+
+  rclcpp::shutdown();
   return 0;
 }

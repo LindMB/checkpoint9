@@ -220,7 +220,7 @@ void PreApproach::cmd_vel_unstamped_pub_timer_clbk_() {
       /// Rotate of x degrees
       rotate_of_x_degrees_();
 
-      // If the pre approch is completed...
+      // If the pre approach is completed...
       if (this->pre_approach_completed_) {
 
         auto request = std::make_shared<GoToLoading::Request>();
@@ -255,6 +255,10 @@ bool PreApproach::is_pre_approach_completed() const {
   return this->pre_approach_completed_;
 }
 
+bool PreApproach::is_final_approach_completed() const {
+  return this->service_response_received_;
+}
+
 void PreApproach::handle_service_response_(
     const rclcpp::Client<GoToLoading>::SharedFuture result_future) {
 
@@ -263,14 +267,18 @@ void PreApproach::handle_service_response_(
   if (this->final_approach_) {
 
     if (response->complete) {
+
+      this->service_response_received_ = true;
       RCLCPP_INFO(this->get_logger(), "Request response - Shelf legs detected "
                                       "and request successfully processed");
     } else {
+      this->service_response_received_ = true;
       RCLCPP_INFO(this->get_logger(),
                   "Request response - Final approach not initiated");
     }
 
   } else {
+    this->service_response_received_ = true;
     RCLCPP_INFO(this->get_logger(),
                 "Request response - Shelf legs not detected properly");
   }
@@ -287,11 +295,24 @@ void signal_handler(int /*signum*/) { // intentionally unused
 int main(int argc, char **argv) {
 
   rclcpp::init(argc, argv);
-  attach_shelf_node = std::make_shared<PreApproach>("attach_shelf_node");
+  attach_shelf_node = std::make_shared<PreApproach>("attach_shelf_v2_node");
 
   // Register the signal handler for CTRL+C
   std::signal(SIGINT, signal_handler);
 
-  rclcpp::spin(attach_shelf_node);
+  rclcpp::Rate rate(10); // 10Hz = 1/10 sec = 0,1 sec = 100 ms
+
+  while (rclcpp::ok() && !attach_shelf_node->is_final_approach_completed()) {
+    rclcpp::spin_some(attach_shelf_node);
+    rate.sleep();
+  }
+
+  RCLCPP_INFO(attach_shelf_node->get_logger(), "Shutting down in 3 seconds...");
+  rclcpp::sleep_for(std::chrono::seconds(3));
+
+  // Destroy publishers/subscribers/timers BEFORE shutdown
+  attach_shelf_node.reset();
+
+  rclcpp::shutdown();
   return 0;
 }

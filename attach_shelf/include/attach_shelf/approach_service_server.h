@@ -24,6 +24,7 @@ public:
   ApproachService();
 
   void stop_robot();
+  bool is_final_approach_completed();
 
   ~ApproachService() = default;
 
@@ -46,7 +47,6 @@ private:
   bool cart_frame_available_ = false;
   bool start_final_approach_ = false;
   bool cart_frame_reached_ = false;
-  bool is_final_approached_completed_ = false;
 
   bool first_odom_ = true;
   bool dist_under_shelf_travelled_ = false;

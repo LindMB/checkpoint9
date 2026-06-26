@@ -18,6 +18,7 @@ public:
 
   void stop_robot();
   bool is_pre_approach_completed() const;
+  bool is_final_approach_completed() const;
 
   ~PreApproach() = default;
 
@@ -38,6 +39,7 @@ private:
   bool pre_approach_completed_ = false;
 
   bool final_approach_;
+  bool service_response_received_ = false;
 
   rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr laser_scan_sub_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
