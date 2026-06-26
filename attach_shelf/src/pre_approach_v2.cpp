@@ -263,8 +263,8 @@ void PreApproach::handle_service_response_(
   if (this->final_approach_) {
 
     if (response->complete) {
-      RCLCPP_INFO(this->get_logger(),
-                  "Request response - Final approach completed successfully");
+      RCLCPP_INFO(this->get_logger(), "Request response - Shelf legs detected "
+                                      "and request successfully processed");
     } else {
       RCLCPP_INFO(this->get_logger(),
                   "Request response - Final approach not initiated");
