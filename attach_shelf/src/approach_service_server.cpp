@@ -264,12 +264,12 @@ void ApproachService::move_robot_to_cart_frame_() {
 
   auto move_msg = geometry_msgs::msg::Twist();
 
-  double error_threshold = 0.02; // 2 cm
+  double error_threshold = 0.04; // 4 cm
 
   if (this->error_dist_ > error_threshold) {
 
     // Move forward slowly
-    move_msg.linear.x = 0.25;
+    move_msg.linear.x = 0.15;
     // Do not rotate faster than 0.4m/s
     move_msg.angular.z =
         std::clamp(this->kp_yaw_ * this->error_yaw_, -0.4, 0.4);
