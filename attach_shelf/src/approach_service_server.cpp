@@ -272,7 +272,7 @@ void ApproachService::move_robot_to_cart_frame_() {
     move_msg.linear.x = 0.15;
     // Do not rotate faster than 0.4m/s
     move_msg.angular.z =
-        std::clamp(this->kp_yaw_ * this->error_yaw_, -0.4, 0.4);
+        std::clamp(this->kp_yaw_ * this->error_yaw_, -1.0, 1.0);
 
     RCLCPP_INFO(this->get_logger(), "Error Distance under shelf : %f",
                 this->error_dist_);
