@@ -1,8 +1,6 @@
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
-
-from launch_xml.launch_description_sources import XMLLaunchDescriptionSource
 
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
@@ -28,17 +26,6 @@ def generate_launch_description():
     rviz_config_arg = DeclareLaunchArgument(
         "rviz_config_file_name",
         default_value="config.rviz"
-    )
-
-    # Include warehouse RB1 launch file
-    start_warehouse_rb1_launch = IncludeLaunchDescription(
-        XMLLaunchDescriptionSource(
-            PathJoinSubstitution([
-                FindPackageShare("the_construct_office_gazebo"),
-                "launch",
-                "warehouse_rb1.launch.xml",
-            ])
-        )
     )
 
     # Approach Service Server node
@@ -85,7 +72,6 @@ def generate_launch_description():
         degrees_arg,
         final_approach_arg,
         rviz_config_arg,
-        start_warehouse_rb1_launch,
         approach_service_node,
         attach_shelf_node,
         rviz_node
