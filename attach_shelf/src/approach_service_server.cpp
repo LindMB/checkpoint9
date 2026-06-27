@@ -55,6 +55,9 @@ ApproachService::ApproachService() : Node("approach_service") {
       "/odom", qos,
       std::bind(&ApproachService::odom_callback_, this, std::placeholders::_1));
 
+  this->elevator_up_pub_ =
+      this->create_publisher<std_msgs::msg::String>("/elevator_up", 10);
+
   RCLCPP_INFO(this->get_logger(), "%s Approach Service Server Ready...",
               service_name.c_str());
 }
@@ -375,6 +378,12 @@ void ApproachService::process_approach_timer_clbk_() {
 
     } else {
       stop_robot();
+
+      auto elevator_up_msg = std_msgs::msg::String();
+      this->elevator_up_pub_->publish(elevator_up_msg);
+
+      RCLCPP_INFO(this->get_logger(), "Robot lifted the shelf successfully !");
+
       this->dist_under_shelf_travelled_ = true;
 
       RCLCPP_INFO(this->get_logger(),

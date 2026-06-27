@@ -10,6 +10,7 @@
 #include "rclcpp/subscription.hpp"
 #include "rclcpp/timer.hpp"
 #include "sensor_msgs/msg/laser_scan.hpp"
+#include "std_msgs/msg/string.hpp"
 #include "tf2_ros/buffer.h"
 #include "tf2_ros/transform_broadcaster.h"
 #include "tf2_ros/transform_listener.h"
@@ -70,6 +71,8 @@ private:
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
 
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
+
+  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr elevator_up_pub_;
 
   void
   approach_service_clbk_(const std::shared_ptr<GoToLoading::Request> request,
