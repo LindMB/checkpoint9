@@ -1,5 +1,6 @@
 #pragma once
 #include "geometry_msgs/msg/twist.hpp"
+#include "my_components/visibility_control.h"
 #include "nav_msgs/msg/odometry.hpp"
 #include "rclcpp/node_options.hpp"
 #include "rclcpp/publisher.hpp"
@@ -13,7 +14,8 @@ namespace my_components {
 class PreApproach : public rclcpp::Node {
 
 public:
-  PreApproach(const rclcpp::NodeOptions &options);
+  COMPOSITION_PUBLIC
+  explicit PreApproach(const rclcpp::NodeOptions &options);
 
   void stop_robot();
   bool is_pre_approach_completed() const;

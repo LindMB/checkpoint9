@@ -18,11 +18,18 @@ find_package(tf2_ros REQUIRED)
 # Include <my package>/include at compilation time
 include_directories(include)
 
-# Define preapproach Component
-add_library(preapproach SHARED src/pre_approach.cpp)
+# Define preapproach_component Component
+add_library(preapproach_component SHARED src/pre_approach.cpp)
 
-# Add dependencies to preapproach Component 
-ament_target_dependencies(preapproach
+# Define the macro COMPOSITION_BUILDING_DLL so that all elements 
+# marked as COMPOSITION_PUBLIC be exported and usable from outsite 
+# of the preapproach_component library
+target_compile_definitions(preapproach_component PRIVATE COMPOSITION_BUILDING_DLL)
+
+
+
+# Add dependencies to preapproach_component Component 
+ament_target_dependencies(preapproach_component
   rclcpp
   rclcpp_components
   geometry_msgs
@@ -32,14 +39,14 @@ ament_target_dependencies(preapproach
   tf2_ros
 )
 
-# Register preapproach as Component so ROS 2 can use it
+# Register preapproach_component as Component so ROS 2 can use it
 rclcpp_components_register_nodes(
-  preapproach "my_components::PreApproach"
+  preapproach_component "my_components::PreApproach"
 )
 
 # Copy preapproach Component into those other folders
 install(TARGETS 
-  preapproach
+  preapproach_component
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
