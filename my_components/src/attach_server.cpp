@@ -1,4 +1,4 @@
-#include "attach_shelf/approach_service_server.h"
+#include "my_components/attach_server.h"
 #include "geometry_msgs/msg/transform_stamped.hpp"
 #include "geometry_msgs/msg/twist.hpp"
 #include "nav_msgs/msg/odometry.hpp"
@@ -21,8 +21,8 @@
 
 namespace my_components {
 
-ApproachService::ApproachService(const rclcpp::NodeOptions &options)
-    : Node("approach_service", options) {
+AttachServer::AttachServer(const rclcpp::NodeOptions &options)
+    : Node("attach_server_node", options) {
 
   std::string service_name = "/approach_shelf";
 
@@ -31,11 +31,11 @@ ApproachService::ApproachService(const rclcpp::NodeOptions &options)
   this->laser_scan_sub_ =
       this->create_subscription<sensor_msgs::msg::LaserScan>(
           "/scan", qos,
-          std::bind(&ApproachService::laser_scan_clbk_, this,
+          std::bind(&AttachServer::laser_scan_clbk_, this,
                     std::placeholders::_1));
 
   this->approach_service_ = this->create_service<GoToLoading>(
-      service_name, std::bind(&ApproachService::approach_service_clbk_, this,
+      service_name, std::bind(&AttachServer::approach_service_clbk_, this,
                               std::placeholders::_1, std::placeholders::_2));
 
   this->tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(this);
@@ -43,7 +43,7 @@ ApproachService::ApproachService(const rclcpp::NodeOptions &options)
   auto tf_timer_period = std::chrono::milliseconds(100);
   this->tf_timer_ = this->create_wall_timer(
       tf_timer_period,
-      std::bind(&ApproachService::publish_cart_frame_timer_clbk_, this));
+      std::bind(&AttachServer::publish_cart_frame_timer_clbk_, this));
 
   this->tf_buffer_ = std::make_shared<tf2_ros::Buffer>(this->get_clock());
   this->tf_listener_ =
@@ -51,14 +51,14 @@ ApproachService::ApproachService(const rclcpp::NodeOptions &options)
 
   this->process_approach_timer_ = this->create_wall_timer(
       tf_timer_period,
-      std::bind(&ApproachService::process_approach_timer_clbk_, this));
+      std::bind(&AttachServer::process_approach_timer_clbk_, this));
 
   this->cmd_vel_pub_ = this->create_publisher<geometry_msgs::msg::Twist>(
       "/diffbot_base_controller/cmd_vel_unstamped", 10);
 
   this->odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
       "/odom", qos,
-      std::bind(&ApproachService::odom_callback_, this, std::placeholders::_1));
+      std::bind(&AttachServer::odom_callback_, this, std::placeholders::_1));
 
   this->elevator_up_pub_ =
       this->create_publisher<std_msgs::msg::String>("/elevator_up", 10);
@@ -67,14 +67,13 @@ ApproachService::ApproachService(const rclcpp::NodeOptions &options)
               service_name.c_str());
 }
 
-void ApproachService::laser_scan_clbk_(
+void AttachServer::laser_scan_clbk_(
     const sensor_msgs::msg::LaserScan::SharedPtr msg) {
 
   this->last_scan_ = msg;
 }
 
-std::vector<std::vector<size_t>>
-ApproachService::identify_shelf_leg_index_groups_(
+std::vector<std::vector<size_t>> AttachServer::identify_shelf_leg_index_groups_(
     const std::vector<size_t> &indices_vect) {
 
   if (indices_vect.empty()) {
@@ -114,7 +113,7 @@ ApproachService::identify_shelf_leg_index_groups_(
   return leg_groups;
 }
 
-bool ApproachService::is_legs_center_computable_(
+bool AttachServer::is_legs_center_computable_(
     const std::vector<std::vector<size_t>> &leg_groups) {
 
   // If the laser only detects 1 shelf leg or none
@@ -125,7 +124,7 @@ bool ApproachService::is_legs_center_computable_(
   }
 }
 
-void ApproachService::compute_legs_center_(
+void AttachServer::compute_legs_center_(
     const std::vector<std::vector<size_t>> &leg_groups) {
 
   size_t leg_1_index;
@@ -162,7 +161,7 @@ void ApproachService::compute_legs_center_(
   this->cart_y = (leg_1_y + leg_2_y) / 2.0;
 }
 
-void ApproachService::prepare_cart_frame_tf_() {
+void AttachServer::prepare_cart_frame_tf_() {
 
   // Create the central point between both legs in the LASER FRAME
   geometry_msgs::msg::PointStamped cart_point_laser_frame;
@@ -211,7 +210,7 @@ void ApproachService::prepare_cart_frame_tf_() {
   this->cart_frame_tf_ready_ = true;
 }
 
-void ApproachService::publish_cart_frame_timer_clbk_() {
+void AttachServer::publish_cart_frame_timer_clbk_() {
 
   // Publish cart_frame
   // It is the TF between the odom frame and
@@ -230,7 +229,7 @@ void ApproachService::publish_cart_frame_timer_clbk_() {
   this->cart_frame_available_ = true;
 }
 
-bool ApproachService::is_error_robot_to_cart_frame_computable_() {
+bool AttachServer::is_error_robot_to_cart_frame_computable_() {
 
   // If the transform is not published yet
   // Or if the robot has already reached cart_frame
@@ -268,7 +267,7 @@ bool ApproachService::is_error_robot_to_cart_frame_computable_() {
   return true;
 }
 
-void ApproachService::move_robot_to_cart_frame_() {
+void AttachServer::move_robot_to_cart_frame_() {
 
   auto move_msg = geometry_msgs::msg::Twist();
 
@@ -295,7 +294,7 @@ void ApproachService::move_robot_to_cart_frame_() {
   this->cmd_vel_pub_->publish(move_msg);
 }
 
-void ApproachService::odom_callback_(
+void AttachServer::odom_callback_(
     const nav_msgs::msg::Odometry::SharedPtr msg) {
 
   // If the robot is not located at cart_frame...
@@ -328,7 +327,7 @@ void ApproachService::odom_callback_(
   this->previous_y_ = y;
 }
 
-void ApproachService::move_forward_() {
+void AttachServer::move_forward_() {
 
   auto move_msg = geometry_msgs::msg::Twist();
 
@@ -338,14 +337,14 @@ void ApproachService::move_forward_() {
   this->cmd_vel_pub_->publish(move_msg);
 }
 
-void ApproachService::stop_robot() {
+void AttachServer::stop_robot() {
 
   auto stop_msg = geometry_msgs::msg::Twist();
 
   this->cmd_vel_pub_->publish(stop_msg);
 }
 
-void ApproachService::process_approach_timer_clbk_() {
+void AttachServer::process_approach_timer_clbk_() {
 
   // If it has NOT been requested to start the final approach...
   if (!this->start_final_approach_) {
@@ -403,7 +402,7 @@ void ApproachService::process_approach_timer_clbk_() {
   }
 }
 
-void ApproachService::approach_service_clbk_(
+void AttachServer::approach_service_clbk_(
     const std::shared_ptr<GoToLoading::Request> request,
     const std::shared_ptr<GoToLoading::Response> response) {
 
@@ -461,7 +460,7 @@ void ApproachService::approach_service_clbk_(
   }
 }
 
-bool ApproachService::is_final_approach_completed() {
+bool AttachServer::is_final_approach_completed() {
   return this->dist_under_shelf_travelled_;
 }
 

@@ -1,9 +1,9 @@
 #ifndef MY_COMPONENTS__ATTACH_SERVER_HPP_
 #define MY_COMPONENTS__ATTACH_SERVER_HPP_
 
-#include "attach_shelf/srv/go_to_loading.hpp"
 #include "geometry_msgs/msg/point.hpp"
 #include "geometry_msgs/msg/transform_stamped.hpp"
+#include "my_components/srv/go_to_loading.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "rclcpp/node_options.hpp"
 #include "rclcpp/publisher.hpp"
@@ -21,17 +21,17 @@
 
 namespace my_components {
 
-class ApproachService : public rclcpp::Node {
+class AttachServer : public rclcpp::Node {
 
 public:
-  using GoToLoading = attach_shelf::srv::GoToLoading;
+  using GoToLoading = my_components::srv::GoToLoading;
 
-  explicit ApproachService(const rclcpp::NodeOptions &options);
+  explicit AttachServer(const rclcpp::NodeOptions &options);
 
   void stop_robot();
   bool is_final_approach_completed();
 
-  ~ApproachService() = default;
+  ~AttachServer() = default;
 
 private:
   double cart_x = 0.0;
