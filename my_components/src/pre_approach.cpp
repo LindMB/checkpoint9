@@ -176,6 +176,14 @@ void PreApproach::rotate_of_x_degrees_() {
     // Prepare robot for next rotation
     this->accumulated_yaw_ = 0.0;
 
+    // Close the node
+    if (this->pre_approach_completed_) {
+      RCLCPP_INFO(this->get_logger(), "Shutting down in 3 seconds...");
+      rclcpp::sleep_for(std::chrono::seconds(3));
+
+      rclcpp::shutdown();
+    }
+
   } else { // Continue to rotate
     cmd_vel_unstamped_pub_->publish(rotate_msg);
   }
