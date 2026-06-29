@@ -12,21 +12,29 @@ find_package(rclcpp_components REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
+find_package(rosidl_default_generators REQUIRED)
 
 # Include <my package>/include at compilation time
 include_directories(include)
 
+# Create a custom message in ${PROJECT_NAME}
+rosidl_generate_interfaces(${PROJECT_NAME}
+	"srv/GoToLoading.srv"
+)
+
 # Define preapproach_component Component
 add_library(preapproach_component SHARED src/pre_approach.cpp)
+# Define AttachServer Component
+add_library(AttachServer SHARED src/attach_server.cpp)
 
 # Define the macro COMPOSITION_BUILDING_DLL so that all elements 
 # marked as COMPOSITION_PUBLIC be exported and usable from outsite 
 # of the preapproach_component library
 target_compile_definitions(preapproach_component PRIVATE COMPOSITION_BUILDING_DLL)
-
-
 
 # Add dependencies to preapproach_component Component 
 ament_target_dependencies(preapproach_component
@@ -38,19 +46,66 @@ ament_target_dependencies(preapproach_component
   tf2
   tf2_ros
 )
+# Add dependencies to AttachServer Component 
+ament_target_dependencies(AttachServer
+  rclcpp
+  rclcpp_components
+  geometry_msgs
+  nav_msgs 
+  sensor_msgs 
+  std_msgs
+  tf2
+  tf2_ros
+  tf2_geometry_msgs
+)
 
 # Register preapproach_component as Component so ROS 2 can use it
 rclcpp_components_register_nodes(
   preapproach_component "my_components::PreApproach"
 )
+# Register AttachServer as Component so ROS 2 can use it
+rclcpp_components_register_nodes(
+  AttachServer "my_components::AttachServer"
+)
 
-# Copy preapproach Component into those other folders
+# Create the manual_composition executable
+add_executable(manual_composition src/manual_composition.cpp)
+
+# Link the C++ code generated to create the custom message(s)
+# to manual_composition
+rosidl_get_typesupport_target(cpp_typesupport_target
+  ${PROJECT_NAME}
+  "rosidl_typesupport_cpp"
+)
+
+# Add to the AttachServer component the code for the service message 
+# (generated service typesupport) 
+target_link_libraries(AttachServer
+  "${cpp_typesupport_target}"
+)
+
+# Add to the manual_composition executable the library that I have created 
+target_link_libraries(manual_composition
+  AttachServer
+)
+
+# Add ROS Packages needed for the manual_composition executable
+ament_target_dependencies(manual_composition
+  rclcpp
+)
+
+# Copy Components into those other folders
 install(TARGETS 
   preapproach_component
+  AttachServer
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
 )
+
+install(TARGETS
+  manual_composition
+  DESTINATION lib/${PROJECT_NAME})
 
 # Copy <my package>/include into /include in the /install folder
 install(DIRECTORY 
@@ -60,6 +115,7 @@ install(DIRECTORY
 install(DIRECTORY
   launch
   rviz
+  srv
   DESTINATION share/${PROJECT_NAME}
 )
 
