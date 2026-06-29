@@ -30,6 +30,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
 add_library(preapproach_component SHARED src/pre_approach.cpp)
 # Define AttachServer Component
 add_library(AttachServer SHARED src/attach_server.cpp)
+# Define AttachClient Component
+add_library(AttachClient SHARED src/attach_client.cpp)
 
 # Define the macro COMPOSITION_BUILDING_DLL so that all elements 
 # marked as COMPOSITION_PUBLIC be exported and usable from outsite 
@@ -58,6 +60,11 @@ ament_target_dependencies(AttachServer
   tf2_ros
   tf2_geometry_msgs
 )
+# Add dependencies to AttachClient Component 
+ament_target_dependencies(AttachClient
+  rclcpp
+  rclcpp_components
+)
 
 # Register preapproach_component as Component so ROS 2 can use it
 rclcpp_components_register_nodes(
@@ -66,6 +73,10 @@ rclcpp_components_register_nodes(
 # Register AttachServer as Component so ROS 2 can use it
 rclcpp_components_register_nodes(
   AttachServer "my_components::AttachServer"
+)
+# Register AttachClient as Component so ROS 2 can use it
+rclcpp_components_register_nodes(
+  AttachClient "my_components::AttachClient"
 )
 
 # Create the manual_composition executable
@@ -83,6 +94,11 @@ rosidl_get_typesupport_target(cpp_typesupport_target
 target_link_libraries(AttachServer
   "${cpp_typesupport_target}"
 )
+# Add to the AttachClient component the code for the service message 
+# (generated service typesupport) 
+target_link_libraries(AttachClient
+  "${cpp_typesupport_target}"
+)
 
 # Add to the manual_composition executable the library that I have created 
 target_link_libraries(manual_composition
@@ -98,6 +114,7 @@ ament_target_dependencies(manual_composition
 install(TARGETS 
   preapproach_component
   AttachServer
+  AttachClient
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
