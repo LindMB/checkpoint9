@@ -398,6 +398,11 @@ void AttachServer::process_approach_timer_clbk_() {
 
       // Reset first_odom_ since to force odom calculations when the robot is
       this->first_odom_ = true;
+
+      RCLCPP_INFO(this->get_logger(), "Shutting down in 3 seconds...");
+      rclcpp::sleep_for(std::chrono::seconds(3));
+
+      rclcpp::shutdown();
     }
   }
 }
