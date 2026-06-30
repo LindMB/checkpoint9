@@ -178,10 +178,21 @@ void PreApproach::rotate_of_x_degrees_() {
 
     // Close the node
     if (this->pre_approach_completed_) {
-      RCLCPP_INFO(this->get_logger(), "Shutting down in 3 seconds...");
+      /*RCLCPP_INFO(this->get_logger(), "Shutting down in 3 seconds...");
       rclcpp::sleep_for(std::chrono::seconds(3));
 
-      rclcpp::shutdown();
+      rclcpp::shutdown();*/
+
+      // Stop the timer callback
+      if (this->cmd_vel_unstamped_pub_timer_) {
+        this->cmd_vel_unstamped_pub_timer_->cancel();
+      }
+
+      // Destroy subscriptions to topics
+      this->odom_sub_.reset();
+      this->laser_scan_sub_.reset();
+
+      RCLCPP_INFO(this->get_logger(), "preapproach node is not used anymore.");
     }
 
   } else { // Continue to rotate
