@@ -20,8 +20,9 @@ public:
 
 private:
   bool final_approach_;
+  bool request_sent_;
 
-  rclcpp::Client<GoToLoading>::SharedPtr approach_service_client_;
+  rclcpp::Client<GoToLoading>::SharedPtr attach_client_;
   rclcpp::TimerBase::SharedPtr timer_;
 
   void timer_callback_();
@@ -31,3 +32,5 @@ private:
 };
 
 } // namespace my_components
+
+#endif
